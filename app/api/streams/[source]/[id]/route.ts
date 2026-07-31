@@ -8,9 +8,21 @@ export async function GET(
 ) {
   try {
     const { source, id } = await params;
+    console.log("[streams api] requested source", source);
+    console.log("[streams api] requested id", id);
     const streams = await getStreamsBySource(source, id);
+    const normalizedStreams = streams.map((stream) => ({
+      id: stream.id,
+      streamNo: stream.streamNo,
+      language: stream.language,
+      hd: stream.hd,
+      embedUrl: stream.embedUrl,
+      source: stream.source,
+    }));
 
-    return NextResponse.json(streams);
+    console.log("[streams api] response", normalizedStreams);
+
+    return NextResponse.json(normalizedStreams);
   } catch (error) {
     console.error("Failed to fetch streams", error);
 

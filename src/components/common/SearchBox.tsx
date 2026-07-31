@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui";
+import { addRecentSearch, getRecentSearches } from "@/lib/persistence";
 import { cn } from "@/lib/utils";
 import { useSearch } from "@/hooks/useSearch";
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/common";
@@ -16,6 +17,7 @@ interface SearchBoxProps {
 export function SearchBox({ className }: SearchBoxProps) {
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
+  const [recentSearches, setRecentSearches] = React.useState<string[]>(() => getRecentSearches().map((item) => item.value));
   const { data, isLoading, isError, error } = useSearch(debouncedQuery);
 
   React.useEffect(() => {
@@ -25,6 +27,12 @@ export function SearchBox({ className }: SearchBoxProps) {
 
     return () => window.clearTimeout(timeout);
   }, [query]);
+
+  const handleSearchSubmit = () => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setRecentSearches(addRecentSearch(trimmed).map((item) => item.value));
+  };
 
   return (
     <div className={cn("relative w-full", className)}>
@@ -37,6 +45,12 @@ export function SearchBox({ className }: SearchBoxProps) {
           id="global-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              handleSearchSubmit();
+            }
+          }}
           placeholder="Search teams, competitions, matches"
           className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
@@ -91,6 +105,24 @@ export function SearchBox({ className }: SearchBoxProps) {
           ) : (
             <EmptyState title="No results found" description="Try another team, competition, or match name." />
           )}
+        </div>
+      ) : null}
+
+      {!query && recentSearches.length > 0 ? (
+        <div className="mt-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-lg">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Recent searches</p>
+          <div className="flex flex-wrap gap-2">
+            {recentSearches.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setQuery(item)}
+                className="rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-sm text-foreground transition hover:border-primary/40"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>

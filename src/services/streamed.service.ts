@@ -84,22 +84,9 @@ async function requestJson<T>(path: string): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`Streamed API request failed with status ${response.status}`);
-  }
-
-  // TEMP LOG: record raw response for tracing duplicates (remove after debugging)
-  try {
-    const raw = await response.clone().text();
-    const contains = raw.includes("ppv-tottenham-hotspur-vs-tsg-hoffenheim");
-    try {
-      const parsed = JSON.parse(raw);
-      const count = Array.isArray(parsed) ? parsed.filter((p) => String(p?.id) === "ppv-tottenham-hotspur-vs-tsg-hoffenheim").length : 0;
-      console.log(`[STREAMED_RAW] ${path} status=${response.status} len=${raw.length} hasTarget=${contains} occurrences=${count}`);
-    } catch (e) {
-      console.log(`[STREAMED_RAW] ${path} status=${response.status} len=${raw.length} hasTarget=${contains} (parse failed)`);
-    }
-  } catch (e) {
-    console.log(`[STREAMED_RAW] ${path} status=${response.status} (failed to read body)`);
+    throw new Error(
+      `Streamed API request failed with status ${response.status}`,
+    );
   }
 
   return (await response.json()) as T;
@@ -112,40 +99,25 @@ export async function getSports(): Promise<Sport[]> {
 
 export async function getLiveMatches(): Promise<Match[]> {
   const payload = await requestJson<StreamedMatchResponse[]>("/matches/live");
-  console.log(`[SERVICE] getLiveMatches -> payload.length=${payload?.length ?? 0} targetCount=${payload?.filter(p => String(p?.id) === "ppv-tottenham-hotspur-vs-tsg-hoffenheim").length ?? 0}`);
   return payload.map(toMatch);
 }
 
 export async function getLivePopularMatches(): Promise<Match[]> {
-  const payload = await requestJson<StreamedMatchResponse[]>("/matches/live/popular");
-  console.log(`[SERVICE] getLivePopularMatches -> payload.length=${payload?.length ?? 0} targetCount=${payload?.filter(p => String(p?.id) === "ppv-tottenham-hotspur-vs-tsg-hoffenheim").length ?? 0}`);
+  const payload = await requestJson<StreamedMatchResponse[]>(
+    "/matches/live/popular",
+  );
   return payload.map(toMatch);
 }
 
 export async function getTodayMatches(): Promise<Match[]> {
-  const payload = await requestJson<StreamedMatchResponse[]>("/matches/all-today");
-  console.log(`[SERVICE] getTodayMatches -> payload.length=${payload?.length ?? 0} targetCount=${payload?.filter(p => String(p?.id) === "ppv-tottenham-hotspur-vs-tsg-hoffenheim").length ?? 0}`);
+  const payload =
+    await requestJson<StreamedMatchResponse[]>("/matches/all-today");
   return payload.map(toMatch);
 }
 
 export async function getAllMatches(): Promise<Match[]> {
   const payload = await requestJson<StreamedMatchResponse[]>("/matches/all");
 
-  // Detect duplicate occurrences for tracing (temporary)
-  try {
-    const targetId = "ppv-tottenham-hotspur-vs-tsg-hoffenheim";
-    const matchesForTarget = Array.isArray(payload)
-      ? payload.filter((p) => String(p?.id) === targetId)
-      : [];
-    if (matchesForTarget.length > 1) {
-      console.log(`[SERVICE] getAllMatches -> payload.length=${payload?.length ?? 0} targetCount=${matchesForTarget.length}`);
-      console.log(`[SERVICE] getAllMatches -> duplicate entries for ${targetId}:`, JSON.stringify(matchesForTarget, null, 2));
-    }
-  } catch (e) {
-    console.log("[SERVICE] getAllMatches -> failed to inspect payload for duplicates", e);
-  }
-
-  // Deduplicate payload by `id` at the service layer to avoid rendering the same match twice
   const uniqueByIdMap = new Map<string, StreamedMatchResponse>();
   if (Array.isArray(payload)) {
     for (const item of payload) {
@@ -155,40 +127,37 @@ export async function getAllMatches(): Promise<Match[]> {
   }
   const uniquePayload = Array.from(uniqueByIdMap.values());
 
-  if (uniquePayload.length !== (payload?.length ?? 0)) {
-    console.log(`[SERVICE] getAllMatches -> deduped payload ${payload?.length ?? 0} -> ${uniquePayload.length}`);
-  }
-
   return uniquePayload.map(toMatch);
 }
 
 export async function getMatchesBySport(sport: string): Promise<Match[]> {
-  const payload = await requestJson<StreamedMatchResponse[]>(`/matches/${encodeURIComponent(sport)}`);
+  const payload = await requestJson<StreamedMatchResponse[]>(
+    `/matches/${encodeURIComponent(sport)}`,
+  );
   return payload.map(toMatch);
 }
 
 export async function getMatchById(id: string): Promise<Match | null> {
   const matches = await getAllMatches();
 
-  // Exact match first
   const exact = matches.find((match) => match.id === id);
   if (exact) return exact;
-
-  // Tolerant lookup for slug-style IDs like "team-a-vs-team-b-2395982"
-  const slugify = (s?: string) => (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const slugify = (s?: string) =>
+    (s ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
 
   const tolerant = matches.find((match) => {
     if (!match.id) return false;
 
-    // If the incoming id contains the numeric id
     if (id.includes(match.id)) return true;
 
-    // If the incoming id ends with `-<id>`
     if (id.endsWith(`-${match.id}`)) return true;
 
-    // Compare slugified title to the incoming id or its prefix
     const titleSlug = slugify(match.title);
-    if (titleSlug && (id === titleSlug || id.startsWith(`${titleSlug}-`))) return true;
+    if (titleSlug && (id === titleSlug || id.startsWith(`${titleSlug}-`)))
+      return true;
 
     return false;
   });
@@ -196,22 +165,14 @@ export async function getMatchById(id: string): Promise<Match | null> {
   return tolerant ?? null;
 }
 
-export async function getStreamsBySource(source: string, id: string): Promise<Stream[]> {
-  const payload = await requestJson<StreamedStreamResponse[]>(`/stream/${source}/${id}`);
+export async function getStreamsBySource(
+  source: string,
+  id: string,
+): Promise<Stream[]> {
+  const payload = await requestJson<StreamedStreamResponse[]>(
+    `/stream/${source}/${id}`,
+  );
 
-  // TEMP LOG + dedupe: some stream endpoints return duplicate stream entries
-  try {
-    const target = `${source}-${id}`;
-    const occurrences = Array.isArray(payload) ? payload.filter((p) => `${p?.source ?? source}-${p?.id ?? ""}` === `${source}-${id}`).length : 0;
-    if (occurrences > 1) {
-      console.log(`[SERVICE] getStreamsBySource -> duplicate stream entries for ${target}: occurrences=${occurrences}`);
-      console.log(JSON.stringify(payload, null, 2));
-    }
-  } catch (e) {
-    console.log("[SERVICE] getStreamsBySource -> failed to inspect payload for duplicates", e);
-  }
-
-  // Deduplicate streams by source+id at service layer (matches UI key format)
   const uniqueMap = new Map<string, StreamedStreamResponse>();
   if (Array.isArray(payload)) {
     for (const s of payload) {
@@ -220,10 +181,6 @@ export async function getStreamsBySource(source: string, id: string): Promise<St
     }
   }
   const uniquePayload = Array.from(uniqueMap.values());
-
-  if (uniquePayload.length !== (payload?.length ?? 0)) {
-    console.log(`[SERVICE] getStreamsBySource -> deduped streams ${payload?.length ?? 0} -> ${uniquePayload.length} for ${source}/${id}`);
-  }
 
   return uniquePayload.map(toStream);
 }

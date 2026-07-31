@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Menu, Search, Tv } from "lucide-react";
+import { Menu, Tv } from "lucide-react";
 
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
