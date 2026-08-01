@@ -122,18 +122,18 @@ export default async function MatchDetailsPage({
 
   if (isSportPage) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.15),_transparent_40%),linear-gradient(180deg,_#060816_0%,_#03050a_100%)] text-foreground">
+      <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.15),_transparent_40%),linear-gradient(180deg,_#060816_0%,_#03050a_100%)] text-foreground">
         <Navbar />
         <div className="flex min-h-screen flex-col lg:flex-row">
           <Sidebar />
-          <main className="flex-1">
-            <Container className="py-8 sm:py-10 lg:py-12">
-              <div className="mb-6 flex items-center justify-between gap-3">
+          <main className="flex-1 overflow-x-hidden">
+            <Container className="mx-auto max-w-screen-xl py-8 sm:py-10 lg:py-12">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm uppercase tracking-[0.25em] text-muted-foreground">
                     Sports Category
                   </p>
-                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                  <h1 className="max-w-full break-words text-2xl font-semibold tracking-tight text-foreground">
                     {id.replace(/-/g, " ")}
                   </h1>
                 </div>
@@ -177,12 +177,12 @@ export default async function MatchDetailsPage({
 
   if (error || !match) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.15),_transparent_40%),linear-gradient(180deg,_#060816_0%,_#03050a_100%)] text-foreground">
+      <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.15),_transparent_40%),linear-gradient(180deg,_#060816_0%,_#03050a_100%)] text-foreground">
         <Navbar />
         <div className="flex min-h-screen flex-col lg:flex-row">
           <Sidebar />
-          <main className="flex-1">
-            <Container className="py-8 sm:py-10 lg:py-12">
+          <main className="flex-1 overflow-x-hidden">
+            <Container className="mx-auto max-w-screen-xl py-8 sm:py-10 lg:py-12">
               <ErrorState
                 title="Match unavailable"
                 description={
@@ -203,13 +203,13 @@ export default async function MatchDetailsPage({
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.15),_transparent_40%),linear-gradient(180deg,_#060816_0%,_#03050a_100%)] text-foreground">
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.15),_transparent_40%),linear-gradient(180deg,_#060816_0%,_#03050a_100%)] text-foreground">
       <Navbar />
       <div className="flex min-h-screen flex-col lg:flex-row">
         <Sidebar />
-        <main className="flex-1">
-          <Container className="py-8 sm:py-10 lg:py-12">
-            <div className="mb-6 flex items-center gap-3">
+        <main className="flex-1 overflow-x-hidden">
+          <Container className="mx-auto max-w-screen-xl py-8 sm:py-10 lg:py-12">
+            <div className="mb-6 flex flex-wrap items-center gap-3">
               <Button
                 asChild
                 variant="ghost"
@@ -224,7 +224,7 @@ export default async function MatchDetailsPage({
                 <p className="text-sm uppercase tracking-[0.25em] text-muted-foreground">
                   Match Details
                 </p>
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                <h1 className="max-w-full break-words text-2xl font-semibold tracking-tight text-foreground">
                   {match.title}
                 </h1>
               </div>

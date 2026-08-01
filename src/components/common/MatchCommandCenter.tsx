@@ -62,12 +62,16 @@ export function MatchCommandCenter({
     let active = true;
 
     if (!firstSource) {
-      setResolvedStreams([]);
-      setSelectedStream(null);
-      setIsLoadingStream(false);
-      setStreamError("No streams available");
+      const timeout = window.setTimeout(() => {
+        if (!active) return;
+        setResolvedStreams([]);
+        setSelectedStream(null);
+        setIsLoadingStream(false);
+        setStreamError("No streams available");
+      }, 0);
       return () => {
         active = false;
+        window.clearTimeout(timeout);
       };
     }
 
@@ -137,7 +141,7 @@ export function MatchCommandCenter({
     return () => {
       active = false;
     };
-  }, [firstSource?.id, firstSource?.source, match.id, matchKey]);
+  }, [firstSource, match.id, matchKey]);
 
   const isLive = Boolean(match.popular);
   const homeName = match.teams?.home?.name ?? "Home";
@@ -179,19 +183,19 @@ export function MatchCommandCenter({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-screen-xl overflow-x-hidden space-y-6 md:space-y-8">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.65, ease: "easeOut" }}
         className="space-y-6"
       >
-        <Card className="overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/80 shadow-2xl shadow-black/30">
-          <CardHeader className="bg-slate-950/70 p-6 sm:p-8">
+        <Card className="overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/80 shadow-2xl shadow-black/30 sm:rounded-[32px]">
+          <CardHeader className="bg-slate-950/70 p-4 md:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">Match Command Center</p>
-                <CardTitle className="text-3xl text-white">{homeName} vs {awayName}</CardTitle>
+                <CardTitle className="max-w-full break-words text-2xl text-white sm:text-3xl">{homeName} vs {awayName}</CardTitle>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-300">
@@ -205,7 +209,7 @@ export function MatchCommandCenter({
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-6 p-6 sm:p-8">
+          <CardContent className="space-y-6 p-4 md:p-6">
             <MatchPlayer
               streams={resolvedStreams}
               selectedStream={selectedStream}
@@ -248,15 +252,15 @@ export function MatchCommandCenter({
               </div>
             ) : null}
 
-            <Card className="rounded-[32px] border border-white/10 bg-slate-950/80 shadow-2xl shadow-black/30">
-              <CardContent className="space-y-4 p-6">
-                <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-5">
+            <Card className="rounded-[24px] border border-white/10 bg-slate-950/80 shadow-2xl shadow-black/30 sm:rounded-[32px]">
+              <CardContent className="space-y-4 p-4 sm:p-6">
+                <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-4 md:p-5">
                   <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Competition</p>
-                  <p className="mt-3 text-lg font-semibold text-white">{match.category}</p>
+                  <p className="mt-3 break-words text-lg font-semibold text-white">{match.category}</p>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-5">
+                <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-4 md:p-5">
                   <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Kickoff</p>
-                  <p className="mt-3 text-lg font-semibold text-white">{formatDate(match.date)}</p>
+                  <p className="mt-3 break-words text-lg font-semibold text-white">{formatDate(match.date)}</p>
                   <p className="mt-2 text-sm text-slate-400">{formatTime(match.date)}</p>
                 </div>
                 <div className="space-y-4">
@@ -281,17 +285,17 @@ export function MatchCommandCenter({
         transition={{ duration: 0.65, ease: "easeOut", delay: 0.05 }}
         className="space-y-6"
       >
-        <Card className="rounded-[32px] border border-white/10 bg-slate-950/80 shadow-2xl shadow-black/30">
-          <CardHeader>
+        <Card className="rounded-[24px] border border-white/10 bg-slate-950/80 shadow-2xl shadow-black/30 sm:rounded-[32px]">
+          <CardHeader className="p-4 md:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">Next Live Matches</p>
-                <CardTitle className="text-2xl text-white">Up next on the schedule</CardTitle>
+                <CardTitle className="max-w-full break-words text-xl text-white sm:text-2xl">Up next on the schedule</CardTitle>
               </div>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">TV Mode lineup</span>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="grid gap-4 p-4 md:p-6 sm:grid-cols-2 xl:grid-cols-4">
             {relatedLiveMatches.length === 0 ? (
               <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 text-center text-slate-400">No next live matches are available.</div>
             ) : (
@@ -299,7 +303,7 @@ export function MatchCommandCenter({
                 <Link
                   key={item.id}
                   href={`/matches/${item.id}`}
-                  className="group rounded-[28px] border border-white/10 bg-white/5 p-5 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10"
+                  className="group rounded-[24px] border border-white/10 bg-white/5 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10 sm:rounded-[28px] sm:p-5"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -328,7 +332,7 @@ export function MatchCommandCenter({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">Available Streams</p>
-                  <CardTitle className="text-2xl text-white">Premium stream feeds</CardTitle>
+                  <CardTitle className="max-w-full break-words text-xl text-white sm:text-2xl">Premium stream feeds</CardTitle>
                 </div>
                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">{streamCount} sources</span>
               </div>
@@ -347,13 +351,13 @@ export function MatchCommandCenter({
                         key={`${stream.source}-${stream.id}`}
                         type="button"
                         onClick={() => setSelectedStream(stream)}
-                        className={`group w-full rounded-[28px] border p-5 text-left transition duration-300 ${
+                        className={`group w-full rounded-[24px] border p-4 text-left transition duration-300 sm:rounded-[28px] sm:p-5 ${
                           active ? "border-emerald-400/40 bg-emerald-500/10" : "border-white/10 bg-white/5 hover:border-emerald-400/30 hover:bg-white/10"
                         }`}
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
-                            <p className="text-base font-semibold text-white">{stream.source}</p>
+                            <p className="break-words text-base font-semibold text-white">{stream.source}</p>
                             <p className="mt-1 text-sm text-slate-400">{stream.language}</p>
                           </div>
                           <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.22em] text-slate-300">
@@ -379,22 +383,22 @@ export function MatchCommandCenter({
             <CardHeader>
               <div>
                 <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">Match Information</p>
-                <CardTitle className="text-2xl text-white">Command details</CardTitle>
+                <CardTitle className="max-w-full break-words text-xl text-white sm:text-2xl">Command details</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 sm:p-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
                   <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Competition</p>
-                  <p className="mt-2 text-sm font-semibold text-white">{match.category}</p>
+                  <p className="mt-2 break-words text-sm font-semibold text-white">{match.category}</p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
                   <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Kickoff</p>
-                  <p className="mt-2 text-sm font-semibold text-white">{formatDate(match.date)}</p>
+                  <p className="mt-2 break-words text-sm font-semibold text-white">{formatDate(match.date)}</p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
                   <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Match ID</p>
-                  <p className="mt-2 text-sm font-semibold text-white break-all">{match.id}</p>
+                  <p className="mt-2 break-all text-sm font-semibold text-white">{match.id}</p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
                   <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Streams</p>
@@ -416,7 +420,7 @@ export function MatchCommandCenter({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">Related Live Matches</p>
-                  <CardTitle className="text-2xl text-white">Now streaming</CardTitle>
+                  <CardTitle className="max-w-full break-words text-xl text-white sm:text-2xl">Now streaming</CardTitle>
                 </div>
                 <Tv className="h-6 w-6 text-emerald-300" />
               </div>
@@ -449,7 +453,7 @@ export function MatchCommandCenter({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">Popular Today</p>
-                  <CardTitle className="text-2xl text-white">Trending now</CardTitle>
+                  <CardTitle className="max-w-full break-words text-xl text-white sm:text-2xl">Trending now</CardTitle>
                 </div>
                 <TrendingUp className="h-6 w-6 text-emerald-300" />
               </div>
@@ -484,17 +488,17 @@ export function MatchCommandCenter({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">Quick Actions</p>
-                  <CardTitle className="text-2xl text-white">Match controls</CardTitle>
+                  <CardTitle className="max-w-full break-words text-xl text-white sm:text-2xl">Match controls</CardTitle>
                 </div>
                 <Share2 className="h-6 w-6 text-emerald-300" />
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 sm:p-6">
               <div className="grid gap-3">
                 <button
                   type="button"
                   onClick={handleFavorite}
-                  className="justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
+                  className="w-full justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
                 >
                   <div className="flex items-center gap-3">
                     <Heart className="h-4 w-4 text-emerald-300" />
@@ -504,7 +508,7 @@ export function MatchCommandCenter({
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
+                  className="w-full justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
                 >
                   <div className="flex items-center gap-3">
                     <Share2 className="h-4 w-4 text-emerald-300" />
@@ -514,7 +518,7 @@ export function MatchCommandCenter({
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
+                  className="w-full justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
                 >
                   <div className="flex items-center gap-3">
                     <Copy className="h-4 w-4 text-emerald-300" />
@@ -524,7 +528,7 @@ export function MatchCommandCenter({
                 <button
                   type="button"
                   onClick={() => setPlayerMode((current) => (current === "theater" ? "standard" : "theater"))}
-                  className="justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
+                  className="w-full justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
                 >
                   <div className="flex items-center gap-3">
                     <Tv className="h-4 w-4 text-emerald-300" />
@@ -534,7 +538,7 @@ export function MatchCommandCenter({
                 <button
                   type="button"
                   onClick={() => setPlayerMode((current) => (current === "mini" ? "standard" : "mini"))}
-                  className="justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
+                  className="w-full justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
                 >
                   <div className="flex items-center gap-3">
                     <PlayCircle className="h-4 w-4 text-emerald-300" />
@@ -543,7 +547,7 @@ export function MatchCommandCenter({
                 </button>
                 <button
                   type="button"
-                  className="justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
+                  className="w-full justify-start rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-white transition hover:bg-white/10"
                 >
                   <div className="flex items-center gap-3">
                     <ArrowRight className="h-4 w-4 text-emerald-300" />

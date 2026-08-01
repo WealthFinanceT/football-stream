@@ -1,5 +1,6 @@
 "use client";
 
+import Hls, { type ErrorData } from "hls.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -27,6 +28,12 @@ interface MatchPlayerProps {
   className?: string;
 }
 
+function isHlsStreamUrl(url: string) {
+  if (!url) return false;
+  const normalized = url.trim().toLowerCase();
+  return normalized.includes(".m3u8") || normalized.includes("/hls/");
+}
+
 export function MatchPlayer({
   streams,
   selectedStream,
@@ -41,33 +48,121 @@ export function MatchPlayer({
 }: MatchPlayerProps) {
   const stream = selectedStream ?? streams[0] ?? null;
   const playerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
   const [interactionTimestamp, setInteractionTimestamp] = useState(0);
+  const [renderMode, setRenderMode] = useState<"loading" | "iframe" | "hls" | "fallback">("loading");
 
   useEffect(() => {
-    console.log("[MatchPlayer] selected stream", stream);
-    console.log("[MatchPlayer] iframe src", stream?.embedUrl ?? "" );
+    const applyStreamState = () => {
+      if (!stream) {
+        const message = "No streams available";
+        setRenderMode("fallback");
+        setErrorState(message);
+        onStreamError?.(message);
+        onStreamReady?.();
+        return;
+      }
 
-    if (!stream) {
-      const message = "No streams available";
-      setErrorState(message);
-      onStreamError?.(message);
+      if (!stream.embedUrl) {
+        const message = "No streams available";
+        setRenderMode("fallback");
+        setErrorState(message);
+        onStreamError?.(message);
+        onStreamReady?.();
+        return;
+      }
+
+      const shouldUseHls = isHlsStreamUrl(stream.embedUrl);
+      if (shouldUseHls) {
+        setRenderMode("loading");
+        setErrorState(null);
+        onStreamReady?.();
+        return;
+      }
+
+      setRenderMode("iframe");
+      setErrorState(null);
       onStreamReady?.();
-      return;
-    }
+    };
 
-    if (!stream.embedUrl) {
-      const message = "No streams available";
-      setErrorState(message);
-      onStreamError?.(message);
-      onStreamReady?.();
-      return;
-    }
-
-    setErrorState(null);
-    onStreamReady?.();
+    const timeout = window.setTimeout(applyStreamState, 0);
+    return () => window.clearTimeout(timeout);
   }, [onStreamError, onStreamReady, stream]);
+
+  useEffect(() => {
+    if (!stream?.embedUrl) return;
+
+    const shouldUseHls = isHlsStreamUrl(stream.embedUrl);
+    if (!shouldUseHls) {
+      const timeout = window.setTimeout(() => {
+        setRenderMode("iframe");
+        setErrorState(null);
+        onStreamReady?.();
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
+
+    if (!Hls.isSupported()) {
+      const message = "HLS playback is not supported in this browser.";
+      const timeout = window.setTimeout(() => {
+        setRenderMode("fallback");
+        setErrorState(message);
+        onStreamError?.(message);
+        onStreamReady?.();
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
+
+    if (!videoRef.current) return;
+
+    const videoElement = videoRef.current;
+    const hls = new Hls({
+      debug: false,
+      enableWorker: true,
+      lowLatencyMode: true,
+    });
+
+    hlsRef.current?.destroy();
+    hlsRef.current = hls;
+
+    const handleHlsError = (_event: string, data: ErrorData) => {
+      const isManifestError =
+        data?.fatal ||
+        data?.details?.toLowerCase().includes("manifest") ||
+        data?.details?.toLowerCase().includes("playlist");
+
+      if (!isManifestError) return;
+
+      const message =
+        "HLS playback failed due to a manifest or network issue. Switching to the provider fallback.";
+      console.warn("[MatchPlayer] HLS playback error", data);
+      setRenderMode("fallback");
+      setErrorState(message);
+      onStreamError?.(message);
+      onStreamReady?.();
+      hls.destroy();
+      hlsRef.current = null;
+    };
+
+    hls.on(Hls.Events.ERROR, handleHlsError);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      setRenderMode("hls");
+      setErrorState(null);
+      onStreamReady?.();
+    });
+
+    hls.loadSource(stream.embedUrl);
+    hls.attachMedia(videoElement);
+
+    return () => {
+      hls.off(Hls.Events.ERROR, handleHlsError);
+      hls.destroy();
+      hlsRef.current = null;
+    };
+  }, [onStreamError, onStreamReady, stream?.embedUrl]);
 
   const qualityOptions = useMemo(
     () =>
@@ -172,11 +267,16 @@ export function MatchPlayer({
     window.open(stream.embedUrl, "_blank");
   };
 
+  const handleRetry = () => {
+    setErrorState(null);
+    setRenderMode("loading");
+  };
+
   if (!stream) {
     return (
       <div
         className={cn(
-          "flex aspect-video items-center justify-center rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/20 via-slate-900 to-slate-800 p-6",
+          "flex aspect-video w-full items-center justify-center rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/20 via-slate-900 to-slate-800 p-4 sm:p-6",
           className,
         )}
       >
@@ -187,53 +287,45 @@ export function MatchPlayer({
     );
   }
 
+  const showPlayerBody = renderMode === "hls" || renderMode === "iframe";
+
   return (
     <div
       ref={playerRef}
       onMouseMove={handleInteraction}
       onFocus={handleInteraction}
       className={cn(
-        "relative transition-all",
+        "relative w-full max-w-full overflow-hidden transition-all",
         className,
         playerMode === "mini" &&
-          "fixed bottom-6 right-6 z-50 w-[360px] shadow-2xl shadow-black/60",
+          "fixed bottom-4 right-3 z-50 w-[calc(100vw-1.5rem)] shadow-2xl shadow-black/60 sm:right-6 sm:w-[360px]",
         playerMode === "theater" &&
-          "mx-auto max-w-[1320px] rounded-[32px] border-2 border-emerald-400/20 bg-slate-950/95",
+          "mx-auto w-full max-w-[1320px] rounded-[24px] border-2 border-emerald-400/20 bg-slate-950/95 sm:rounded-[32px]",
         playerMode !== "mini" &&
           "rounded-[24px] border border-border/70 bg-black/80",
       )}
     >
       <div className="relative overflow-hidden rounded-[24px] border border-border/70 bg-black/80">
-        {loading || errorState ? (
+        {loading || (!showPlayerBody && renderMode !== "fallback") ? (
           <div className="aspect-video flex items-center justify-center bg-slate-950/95 p-8 text-center">
-            {errorState ? (
-              <div className="space-y-4 text-white">
-                <AlertTriangle className="mx-auto h-12 w-12 text-rose-400" />
-                <p className="text-sm text-slate-300">{errorState}</p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorState(null);
-                    }}
-                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-emerald-300/40 hover:bg-white/10"
-                  >
-                    Retry stream
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenExternal}
-                    className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100 transition hover:bg-emerald-500/15"
-                  >
-                    Open in new window
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <LoadingSpinner label="Loading stream" />
-            )}
+            <LoadingSpinner label="Loading stream" />
           </div>
-        ) : (
+        ) : null}
+
+        {!loading && renderMode === "hls" ? (
+          <video
+            ref={videoRef}
+            controls
+            playsInline
+            className="aspect-video w-full bg-black"
+            onCanPlay={() => {
+              setRenderMode("hls");
+              setErrorState(null);
+            }}
+          />
+        ) : null}
+
+        {!loading && renderMode === "iframe" ? (
           <iframe
             loading="lazy"
             src={stream.embedUrl}
@@ -247,11 +339,36 @@ export function MatchPlayer({
             }}
             onError={handleIframeError}
           />
-        )}
+        ) : null}
+
+        {!loading && renderMode === "fallback" ? (
+          <div className="aspect-video flex items-center justify-center bg-slate-950/95 p-8 text-center">
+            <div className="space-y-4 text-white">
+              <AlertTriangle className="mx-auto h-12 w-12 text-rose-400" />
+              <p className="text-sm text-slate-300">{errorState ?? "The stream could not be loaded."}</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-emerald-300/40 hover:bg-white/10"
+                >
+                  Retry stream
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenExternal}
+                  className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100 transition hover:bg-emerald-500/15"
+                >
+                  Open in new window
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-4 border-b border-white/10 bg-gradient-to-b from-slate-950/80 to-transparent px-4 py-4 transition-opacity duration-300 sm:px-6",
+            "pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-3 border-b border-white/10 bg-gradient-to-b from-slate-950/80 to-transparent px-4 py-4 transition-opacity duration-300 sm:flex-row sm:items-center sm:justify-between sm:px-6",
             controlsVisible ? "opacity-100" : "opacity-0",
           )}
         >
@@ -263,11 +380,11 @@ export function MatchPlayer({
               Premium viewing experience
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10"
+              className="pointer-events-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 sm:w-auto"
             >
               <Fullscreen className="h-4 w-4" />
               Fullscreen
@@ -275,7 +392,7 @@ export function MatchPlayer({
             <button
               type="button"
               onClick={onToggleTheater}
-              className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10"
+              className="pointer-events-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 sm:w-auto"
             >
               <LayoutDashboard className="h-4 w-4" />
               Theater
@@ -283,7 +400,7 @@ export function MatchPlayer({
             <button
               type="button"
               onClick={onToggleMini}
-              className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10"
+              className="pointer-events-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 sm:w-auto"
             >
               <Minimize2 className="h-4 w-4" />
               Mini TV
@@ -311,21 +428,21 @@ export function MatchPlayer({
               <button
                 type="button"
                 onClick={switchStream}
-                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-white/10"
+                className="inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-white/10"
               >
                 Switch stream
               </button>
               <button
                 type="button"
                 onClick={handleOpenExternal}
-                className="inline-flex items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs uppercase tracking-[0.24em] text-emerald-100 transition hover:bg-emerald-500/15"
+                className="inline-flex w-full items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs uppercase tracking-[0.24em] text-emerald-100 transition hover:bg-emerald-500/15"
               >
                 Open external
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
             {qualityOptions.slice(0, 3).map((option) => {
               const active =
                 option.stream.id === stream.id &&
@@ -339,7 +456,7 @@ export function MatchPlayer({
                     setErrorState(null);
                   }}
                   className={cn(
-                    "rounded-2xl border px-3 py-2 text-left text-sm transition",
+                    "w-full rounded-2xl border px-3 py-2 text-left text-sm transition",
                     active
                       ? "border-emerald-400/40 bg-emerald-500/10 text-white"
                       : "border-white/10 bg-white/5 text-slate-300 hover:border-emerald-400/30 hover:bg-white/10",
@@ -357,11 +474,11 @@ export function MatchPlayer({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+      <div className="rounded-2xl border border-border/70 bg-background/60 p-4 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-foreground">Now playing</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 break-words text-sm text-muted-foreground">
               {stream.language} · {stream.source}
             </p>
           </div>
