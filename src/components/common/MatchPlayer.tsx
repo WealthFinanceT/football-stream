@@ -5,8 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
   Fullscreen,
   LayoutDashboard,
+  MessageCircle,
   Minimize2,
   PlayCircle,
 } from "lucide-react";
@@ -54,6 +58,7 @@ export function MatchPlayer({
   const [errorState, setErrorState] = useState<string | null>(null);
   const [interactionTimestamp, setInteractionTimestamp] = useState(0);
   const [renderMode, setRenderMode] = useState<"loading" | "iframe" | "hls" | "fallback">("loading");
+  const [isStreamOptionsOpen, setIsStreamOptionsOpen] = useState(false);
 
   useEffect(() => {
     const applyStreamState = () => {
@@ -368,11 +373,11 @@ export function MatchPlayer({
 
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-3 border-b border-white/10 bg-gradient-to-b from-slate-950/80 to-transparent px-4 py-4 transition-opacity duration-300 sm:flex-row sm:items-center sm:justify-between sm:px-6",
+            "pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-3 border-b border-white/10 bg-gradient-to-b from-slate-950/80 to-transparent px-4 py-3 transition-opacity duration-300 sm:flex-row sm:items-center sm:justify-between sm:px-6",
             controlsVisible ? "opacity-100" : "opacity-0",
           )}
         >
-          <div className="space-y-1">
+          <div className="hidden space-y-1 sm:block">
             <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
               TV Mode Control
             </p>
@@ -380,19 +385,27 @@ export function MatchPlayer({
               Premium viewing experience
             </p>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="pointer-events-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 sm:w-auto"
+              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10"
             >
               <Fullscreen className="h-4 w-4" />
               Fullscreen
             </button>
             <button
               type="button"
+              onClick={() => setIsStreamOptionsOpen((value) => !value)}
+              className="pointer-events-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 md:hidden"
+            >
+              {isStreamOptionsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              Stream options
+            </button>
+            <button
+              type="button"
               onClick={onToggleTheater}
-              className="pointer-events-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 sm:w-auto"
+              className="pointer-events-auto hidden items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 sm:inline-flex"
             >
               <LayoutDashboard className="h-4 w-4" />
               Theater
@@ -400,7 +413,7 @@ export function MatchPlayer({
             <button
               type="button"
               onClick={onToggleMini}
-              className="pointer-events-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 sm:w-auto"
+              className="pointer-events-auto hidden items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 sm:inline-flex"
             >
               <Minimize2 className="h-4 w-4" />
               Mini TV
@@ -410,7 +423,7 @@ export function MatchPlayer({
 
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-slate-950/90 to-transparent px-4 pb-4 pt-4 transition-opacity duration-300 sm:px-6",
+            "pointer-events-none absolute inset-x-0 bottom-0 z-20 hidden bg-gradient-to-t from-slate-950/90 to-transparent px-4 pb-4 pt-4 transition-opacity duration-300 sm:px-6 md:block",
             controlsVisible ? "opacity-100" : "opacity-0",
           )}
         >
@@ -467,10 +480,85 @@ export function MatchPlayer({
               );
             })}
           </div>
-          <p className="mt-3 text-xs uppercase tracking-[0.28em] text-slate-500">
+          <p className="mt-3 hidden text-xs uppercase tracking-[0.28em] text-slate-500 md:block">
             Shortcuts: F to fullscreen · T for theater · M for mini TV · S to
             switch source
           </p>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <button
+            type="button"
+            onClick={handleOpenExternal}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/15"
+          >
+            Open external
+            <ExternalLink className="h-4 w-4" />
+          </button>
+          <p className="text-sm text-muted-foreground">
+            Keep the stream visible and use the compact controls when needed.
+          </p>
+        </div>
+
+        {isStreamOptionsOpen ? (
+          <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-3 md:hidden">
+            <div className="grid gap-2">
+              <button
+                type="button"
+                onClick={switchStream}
+                className="inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-emerald-400/40 hover:bg-white/10"
+              >
+                Switch stream
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenExternal}
+                className="inline-flex w-full items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/15"
+              >
+                Open external
+              </button>
+              <button
+                type="button"
+                onClick={onToggleMini}
+                className="inline-flex w-full items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-emerald-400/40 hover:bg-white/10"
+              >
+                Mini TV
+              </button>
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
+                Keyboard shortcuts
+              </p>
+              <p className="mt-2 text-sm text-slate-300">
+                F to fullscreen · T for theater · M for mini TV · S to switch source
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 md:p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-white/10 p-2">
+              <MessageCircle className="h-5 w-5 text-emerald-100" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-white">Need Help?</p>
+              <p className="text-sm leading-6 text-emerald-50/90">
+                If a stream isn&apos;t working or you find a broken link, contact support and we&apos;ll help you as soon as possible.
+              </p>
+            </div>
+          </div>
+          <a
+            href="https://wa.me/2347065552478"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center justify-center gap-2 rounded-full border border-emerald-400/30 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-slate-900"
+          >
+            Contact support on WhatsApp
+            <ArrowRight className="h-4 w-4" />
+          </a>
         </div>
       </div>
 
