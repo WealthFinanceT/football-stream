@@ -12,7 +12,7 @@ interface NavbarProps {
 }
 
 export function Navbar({
-  title = "Football Stream",
+  title = "GoalPulse",
   actions,
   className,
 }: NavbarProps) {
@@ -34,7 +34,7 @@ export function Navbar({
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-              <p className="truncate text-xs text-muted-foreground">Live football experience</p>
+              <p className="truncate text-xs text-muted-foreground">Live sports experience</p>
             </div>
           </Link>
         </div>

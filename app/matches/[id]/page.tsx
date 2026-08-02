@@ -48,8 +48,8 @@ export async function generateMetadata({
   const slug = id.replace(/-/g, " ");
   const title = match ? `${match.title} | GoalPulse` : `${slug} | GoalPulse`;
   const description = match
-    ? `Watch ${match.title} with live streams, premium football coverage, and match details on GoalPulse.`
-    : `Explore football matches and streams for ${slug} on GoalPulse.`;
+    ? `Watch ${match.title} with live streams, premium sports coverage, and match details on GoalPulse.`
+    : `Explore live sports matches and streams for ${slug} on GoalPulse.`;
 
   return {
     title,
@@ -66,7 +66,7 @@ export async function generateMetadata({
           url: "/og-image.svg",
           width: 1200,
           height: 630,
-          alt: "GoalPulse football streaming preview",
+          alt: "GoalPulse live sports streaming preview",
         },
       ],
     },

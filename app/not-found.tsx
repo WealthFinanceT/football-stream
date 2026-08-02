@@ -10,7 +10,7 @@ export default function NotFound() {
         </div>
         <h2 className="mt-6 text-2xl font-semibold text-white">Page not found</h2>
         <p className="mt-3 text-sm leading-7 text-slate-400">
-          The route you tried to open is not available right now, but there is plenty of live football to explore.
+          The route you tried to open is not available right now, but there is plenty of live sports to explore.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link

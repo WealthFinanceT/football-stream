@@ -51,7 +51,7 @@ export default async function LiveMatchesPage() {
         ) : matches.length === 0 ? (
           <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-8 text-slate-300">
             <p className="text-lg font-semibold text-white">No live matches right now</p>
-            <p className="mt-2 text-sm text-slate-400">Check back shortly for new live football fixtures.</p>
+            <p className="mt-2 text-sm text-slate-400">Check back shortly for new live sports fixtures.</p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

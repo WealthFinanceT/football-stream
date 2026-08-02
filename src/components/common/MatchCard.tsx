@@ -31,7 +31,7 @@ export function MatchCard({
   const fallbackTitle = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : title;
 
   return (
-    <article className={cn("group rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg", className)}>
+    <article className={cn("group rounded-[28px] border border-white/10 bg-slate-950/80 p-6 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40 hover:shadow-2xl", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">

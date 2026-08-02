@@ -17,7 +17,7 @@ export function LiveNowCard({ match }: { match: Match }) {
     <motion.div
       whileHover={{ y: -8, scale: 1.01 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="min-w-[320px] max-w-[320px] rounded-[28px] border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl"
+      className="min-w-[320px] max-w-[320px] rounded-[32px] border border-white/10 bg-slate-950/80 p-7 shadow-2xl shadow-black/40 backdrop-blur-xl"
     >
       <Link href={`/matches/${match.id}`} className="block h-full">
         <div className="flex items-center justify-between gap-4">

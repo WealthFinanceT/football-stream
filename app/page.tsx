@@ -6,10 +6,12 @@ import { PlayCircle, Sparkles, Trophy } from "lucide-react";
 import { LiveMatchCenter } from "@/components/common/LiveMatchCenter";
 import { LiveNowCard } from "@/components/common/LiveNowCard";
 import { LeagueCard } from "@/components/common/LeagueCard";
+import { LiveScoreWidget } from "@/components/common/LiveScoreWidget";
 import { MatchCard } from "@/components/common/MatchCard";
 import { FeaturedMatchSpotlight } from "@/components/common/FeaturedMatchSpotlight";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { Button } from "@/components/ui";
+import { getLeagueLogo } from "@/lib/league-logos";
 import {
   getLiveMatches,
   getLivePopularMatches,
@@ -33,51 +35,51 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title:
         liveCount > 0
-          ? `Live football now · ${liveCount} streams`
-          : "Live football streaming",
+          ? `Live sports now · ${liveCount} streams`
+          : "Live sports streaming",
       description:
         liveCount > 0
-          ? `Catch ${liveCount} live football streams and premium match coverage on GoalPulse.`
-          : "Discover live football streams, match highlights, and premium football coverage on GoalPulse.",
+          ? `Catch ${liveCount} live sports streams and premium coverage on GoalPulse.`
+          : "Discover live sports streams, highlights, and premium coverage on GoalPulse.",
       alternates: {
         canonical: "/",
       },
       openGraph: {
         title:
           liveCount > 0
-            ? `GoalPulse · ${liveCount} live football streams`
-            : "GoalPulse · Live football streaming",
+            ? `GoalPulse · ${liveCount} live sports streams`
+            : "GoalPulse · Live sports streaming",
         description:
           liveCount > 0
-            ? `Catch ${liveCount} live football streams and premium match coverage on GoalPulse.`
-            : "Discover live football streams, match highlights, and premium football coverage on GoalPulse.",
+            ? `Catch ${liveCount} live sports streams and premium coverage on GoalPulse.`
+            : "Discover live sports streams, highlights, and premium coverage on GoalPulse.",
         url: "/",
         images: [
           {
             url: "/og-image.svg",
             width: 1200,
             height: 630,
-            alt: "GoalPulse football streaming preview",
+            alt: "GoalPulse live sports streaming preview",
           },
         ],
       },
       twitter: {
         title:
           liveCount > 0
-            ? `GoalPulse · ${liveCount} live football streams`
-            : "GoalPulse · Live football streaming",
+            ? `GoalPulse · ${liveCount} live sports streams`
+            : "GoalPulse · Live sports streaming",
         description:
           liveCount > 0
-            ? `Catch ${liveCount} live football streams and premium match coverage on GoalPulse.`
-            : "Discover live football streams, match highlights, and premium football coverage on GoalPulse.",
+            ? `Catch ${liveCount} live sports streams and premium coverage on GoalPulse.`
+            : "Discover live sports streams, highlights, and premium coverage on GoalPulse.",
         images: ["/og-image.svg"],
       },
     };
   } catch {
     return {
-      title: "GoalPulse | Live football streaming",
+      title: "GoalPulse | Live sports streaming",
       description:
-        "Discover live football streams, match highlights, and premium football coverage on GoalPulse.",
+        "Discover live sports streams, highlights, and premium coverage on GoalPulse.",
       alternates: {
         canonical: "/",
       },
@@ -191,7 +193,7 @@ export default async function HomePage() {
               <p className="text-sm font-semibold uppercase tracking-[0.32em] text-slate-300">
                 GoalPulse
               </p>
-              <p className="text-xs text-slate-500">Live football</p>
+              <p className="text-xs text-slate-500">Live sports</p>
             </div>
           </Link>
 
@@ -217,23 +219,24 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-black/30 sm:p-10 lg:p-14">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <section className="relative mb-10 overflow-hidden rounded-[36px] border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-black/30 sm:p-10 lg:p-14">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.24),_transparent_35%)]" />
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-slate-950/70 to-slate-950" />
           <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-300">
                 <Sparkles className="h-4 w-4" />
-                Premium football streaming
+                Premium live sports streaming
               </div>
               <div className="space-y-3">
                 <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                  Watch Football Live
+                  Watch Live Sports
                 </h1>
                 <p className="max-w-xl text-lg leading-8 text-slate-300 sm:text-xl">
-                  Discover live matches, premium highlights, and the biggest
-                  football moments directly from the Streamed API.
+                  Watch football, basketball, UFC, baseball, rugby, cricket,
+                  motorsports, tennis, and more—all in one premium streaming
+                  experience.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -264,41 +267,49 @@ export default async function HomePage() {
               </p>
               <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
                 <p className="text-lg font-semibold text-white">
-                  {heroMatch?.title ?? "Live football coverage"}
+                  {heroMatch?.title ?? "Live sports coverage"}
                 </p>
                 <p className="mt-2 text-sm text-slate-400">
                   {heroMatch
                     ? `${heroMatch.category} · ${formatDate(heroMatch.date)}`
-                    : "Real-time football action from the official API."}
+                    : "Real-time sports action from the official API."}
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        <FeaturedMatchSpotlight
-          match={
-            finalLive[0] ??
-            heroMatch ?? {
-              id: "featured-placeholder",
-              title: "No featured live match available",
-              category: "Live Spotlight",
-              date: now,
-              popular: false,
-              sources: [],
+        <div className="mt-10 mb-10">
+          <FeaturedMatchSpotlight
+            match={
+              finalLive[0] ??
+              heroMatch ?? {
+                id: "featured-placeholder",
+                title: "No featured live match available",
+                category: "Live Spotlight",
+                date: now,
+                popular: false,
+                sources: [],
+              }
             }
-          }
-        />
+          />
+        </div>
 
-        <LiveMatchCenter
-          liveMatches={finalLive}
-          todayMatchesCount={finalToday.length}
-          sportsCount={sports.length}
-          hdStreamsCount={liveStreamsCount}
-          trendingMatches={trendingMatches}
-        />
+        <div className="mb-10">
+          <LiveScoreWidget />
+        </div>
 
-        <section className="mt-10 space-y-6">
+        <section className="py-10">
+          <LiveMatchCenter
+            liveMatches={finalLive}
+            todayMatchesCount={finalToday.length}
+            sportsCount={sports.length}
+            hdStreamsCount={liveStreamsCount}
+            trendingMatches={trendingMatches}
+          />
+        </section>
+
+        <section className="space-y-8 py-10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">
@@ -308,7 +319,7 @@ export default async function HomePage() {
                 Elite competitions
               </h2>
               <p className="mt-2 text-sm text-slate-400">
-                Jump into the world&apos;s most prestigious football leagues
+                Jump into the world&apos;s most prestigious sports leagues
                 with premium coverage.
               </p>
             </div>
@@ -320,47 +331,53 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <LeagueCard
               href="/matches/premier-league"
               title="Premier League"
               accent="#1f7f2d"
-              logo={<span className="text-lg font-bold">PL</span>}
+              logoSrc={getLeagueLogo("Premier League")}
+              fallbackLogo={<span className="text-lg font-bold">PL</span>}
             />
             <LeagueCard
               href="/matches/champions-league"
               title="Champions League"
               accent="#27486b"
-              logo={<span className="text-lg font-bold">UCL</span>}
+              logoSrc={getLeagueLogo("Champions League")}
+              fallbackLogo={<span className="text-lg font-bold">UCL</span>}
             />
             <LeagueCard
               href="/matches/la-liga"
               title="La Liga"
               accent="#c10000"
-              logo={<span className="text-lg font-bold">LL</span>}
+              logoSrc={getLeagueLogo("La Liga")}
+              fallbackLogo={<span className="text-lg font-bold">LL</span>}
             />
             <LeagueCard
               href="/matches/serie-a"
               title="Serie A"
               accent="#005e6b"
-              logo={<span className="text-lg font-bold">SA</span>}
+              logoSrc={getLeagueLogo("Serie A")}
+              fallbackLogo={<span className="text-lg font-bold">SA</span>}
             />
             <LeagueCard
               href="/matches/bundesliga"
               title="Bundesliga"
               accent="#e30513"
-              logo={<span className="text-lg font-bold">BL</span>}
+              logoSrc={getLeagueLogo("Bundesliga")}
+              fallbackLogo={<span className="text-lg font-bold">BL</span>}
             />
             <LeagueCard
               href="/matches/ligue-1"
               title="Ligue 1"
               accent="#003f6b"
-              logo={<span className="text-lg font-bold">L1</span>}
+              logoSrc={getLeagueLogo("Ligue 1")}
+              fallbackLogo={<span className="text-lg font-bold">L1</span>}
             />
           </div>
         </section>
 
-        <section className="mt-10 space-y-6">
+        <section className="space-y-8 py-10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-white">Live Now</h2>
@@ -386,7 +403,7 @@ export default async function HomePage() {
               description="The service is currently returning no live events."
             />
           ) : (
-            <div className="flex gap-4 overflow-x-auto pb-4 pt-2">
+            <div className="flex gap-6 overflow-x-auto pb-2 pt-2">
               {finalLive.slice(0, 6).map((match) => (
                 <LiveNowCard key={match.id} match={match} />
               ))}
@@ -394,14 +411,14 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section className="mt-10 space-y-6">
+        <section className="space-y-8 py-10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-white">
                 Today&apos;s Matches
               </h2>
               <p className="text-sm text-slate-400">
-                Your curated schedule for the day with premium football
+                Your curated schedule for the day with premium sports
                 fixtures.
               </p>
             </div>
@@ -423,7 +440,7 @@ export default async function HomePage() {
               description="Check back later for upcoming fixtures."
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
               {finalToday.slice(0, 8).map((match) => (
                 <Link
                   key={match.id}
@@ -466,7 +483,7 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section className="mt-10 space-y-4">
+        <section className="space-y-8 py-10">
           <div>
             <h2 className="text-2xl font-semibold text-white">
               Popular Matches
@@ -486,7 +503,7 @@ export default async function HomePage() {
               description="There are no popular live matches to display right now."
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {finalPopular.map((match) => (
                 <Link
                   key={match.id}
@@ -530,7 +547,7 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section id="sports" className="mt-10 space-y-4">
+        <section id="sports" className="space-y-8 py-10">
           <div>
             <h2 className="text-2xl font-semibold text-white">
               Sports Categories
@@ -547,7 +564,7 @@ export default async function HomePage() {
               description="The API has not returned any sport categories yet."
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {sports.map((sport) => (
                 <Link
                   key={sport.id}
@@ -572,7 +589,7 @@ export default async function HomePage() {
 
       <footer className="border-t border-white/10 bg-slate-950/70">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>© 2026 GoalPulse. Football, reimagined.</p>
+          <p>© 2026 GoalPulse. Sports, reimagined.</p>
           <div className="flex gap-4">
             <a href="#" className="transition hover:text-white">
               About
