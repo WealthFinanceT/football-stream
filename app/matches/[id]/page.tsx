@@ -12,6 +12,7 @@ import {
   Sidebar,
 } from "@/components";
 import { Button } from "@/components/ui";
+import { buildMatchPath } from "@/lib/utils";
 import type { Match, Stream } from "@/types/streamed";
 import {
   getLiveMatches,
@@ -153,7 +154,7 @@ export default async function MatchDetailsPage({
                 {sportMatches.map((sportMatch) => (
                   <Link
                     key={sportMatch.id}
-                    href={`/matches/${sportMatch.id}`}
+                    href={buildMatchPath(sportMatch.title, sportMatch.id)}
                     className="block"
                   >
                     <MatchCard

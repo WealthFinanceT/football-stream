@@ -7,6 +7,7 @@ import { Heart, PlayCircle, Sparkles, Star } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildMatchPath } from "@/lib/utils";
 import { getFavorites, type StoredMatch } from "@/lib/persistence";
 
 export default function FavoritesPage() {
@@ -79,7 +80,7 @@ export default function FavoritesPage() {
                     <p className="mt-1">Saved for quick replay from your watch list.</p>
                   </div>
                   <Button asChild variant="outline" className="w-full border-white/10 bg-slate-900/70 text-slate-200 hover:bg-slate-800">
-                    <Link href={`/matches/${match.id}`} className="flex items-center justify-center gap-2">
+                    <Link href={buildMatchPath(match.title, match.id)} className="flex items-center justify-center gap-2">
                       <PlayCircle className="h-4 w-4" />
                       Watch now
                     </Link>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { buildMatchPath } from "@/lib/utils";
 import type { Match, Sport } from "@/types/streamed";
 
 async function getMatches() {
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
           title: match.title,
           type: "match" as const,
           subtitle: match.category,
-          href: `/matches/${match.id}`,
+          href: buildMatchPath(match.title, match.id),
         })),
       ...sports
         .filter((sport) => sport.name.toLowerCase().includes(query) || sport.id.toLowerCase().includes(query))
@@ -76,14 +77,14 @@ export async function GET(request: Request) {
             title: match.teams.home.name,
             type: "team" as const,
             subtitle: "Home team",
-            href: `/matches/${match.id}`,
+            href: buildMatchPath(match.title, match.id),
           },
           match.teams?.away?.name && {
             id: `${match.id}-away`,
             title: match.teams.away.name,
             type: "team" as const,
             subtitle: "Away team",
-            href: `/matches/${match.id}`,
+            href: buildMatchPath(match.title, match.id),
           },
         ].filter(Boolean))
         .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),

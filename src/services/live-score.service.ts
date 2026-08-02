@@ -1,3 +1,4 @@
+import { buildMatchPath } from "@/lib/utils";
 import type { Match } from "@/types/streamed";
 
 export interface LiveScoreTeam {
@@ -55,6 +56,6 @@ export async function fetchLiveScores(): Promise<LiveScoreMatch[]> {
       score: extractScore(match.title) ?? "TBD",
       minute: getMatchMinute(match.date),
       status: "LIVE",
-      matchUrl: `/matches/${match.id}`,
+      matchUrl: buildMatchPath(match.title, match.id),
     }));
 }

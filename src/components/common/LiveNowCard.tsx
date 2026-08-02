@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Clock3 } from "lucide-react";
+import { buildMatchPath } from "@/lib/utils";
 import type { Match } from "@/types/streamed";
 
 function matchBadgeUrl(badge?: string) {
@@ -13,13 +14,15 @@ function matchBadgeUrl(badge?: string) {
 }
 
 export function LiveNowCard({ match }: { match: Match }) {
+  const matchHref = buildMatchPath(match.title, match.id);
+
   return (
     <motion.div
       whileHover={{ y: -8, scale: 1.01 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="min-w-[320px] max-w-[320px] rounded-[32px] border border-white/10 bg-slate-950/80 p-7 shadow-2xl shadow-black/40 backdrop-blur-xl"
     >
-      <Link href={`/matches/${match.id}`} className="block h-full">
+      <Link href={matchHref} className="block h-full">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-2">
             <p className="text-sm uppercase tracking-[0.32em] text-emerald-300">

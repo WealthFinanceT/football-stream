@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Clock3, TrendingUp, Tv, Zap } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildMatchPath } from "@/lib/utils";
 import type { Match } from "@/types/streamed";
 
 function matchBadgeUrl(badge?: string) {
@@ -164,7 +165,7 @@ export function LiveMatchCenter({
                             variant="secondary"
                             className="rounded-full border border-white/10 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500/20"
                           >
-                            <Link href={`/matches/${match.id}`}>Watch Now</Link>
+                            <Link href={buildMatchPath(match.title, match.id)}>Watch Now</Link>
                           </Button>
                         </div>
                       </motion.article>
@@ -257,10 +258,11 @@ export function LiveMatchCenter({
               ) : (
                 trendingMatches.map((match) => {
                   const isLive = liveMatchIds.has(match.id);
+                  const matchHref = buildMatchPath(match.title, match.id);
                   return (
                     <Link
                       key={match.id}
-                      href={`/matches/${match.id}`}
+                      href={matchHref}
                       className="group block rounded-[28px] border border-white/10 bg-white/5 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10"
                     >
                       <div className="flex items-start justify-between gap-4">

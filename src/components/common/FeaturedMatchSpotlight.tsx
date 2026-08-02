@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { PlayCircle, Trophy } from "lucide-react";
 import type { Match } from "@/types/streamed";
+import { buildMatchPath } from "@/lib/utils";
 
 function matchBadgeUrl(badge?: string) {
   return badge ? `https://streamed.pk/api/images/badge/${badge}.webp` : undefined;
@@ -44,6 +45,7 @@ export function FeaturedMatchSpotlight({ match }: { match: Match }) {
 
   const isStarted = match.popular;
   const score = extractScore(match.title);
+  const matchHref = buildMatchPath(match.title, match.id);
 
   const backgroundImage = match.poster ? match.poster : STADIUM_IMAGE;
 
@@ -98,7 +100,7 @@ export function FeaturedMatchSpotlight({ match }: { match: Match }) {
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
-              href={`/matches/${match.id}`}
+              href={matchHref}
               className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
             >
               <PlayCircle className="mr-2 h-4 w-4" />

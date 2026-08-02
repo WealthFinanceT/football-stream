@@ -7,6 +7,7 @@ import { ArrowRight, Copy, Heart, PlayCircle, Share2, TrendingUp, Tv } from "luc
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MatchPlayer } from "@/components/common/MatchPlayer";
 import { addToWatchHistory, getFavorites, toggleFavorite } from "@/lib/persistence";
+import { buildMatchPath } from "@/lib/utils";
 import type { Match, Stream } from "@/types/streamed";
 
 function formatDate(date: number) {
@@ -299,22 +300,25 @@ export function MatchCommandCenter({
             {relatedLiveMatches.length === 0 ? (
               <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 text-center text-slate-400">No next live matches are available.</div>
             ) : (
-              relatedLiveMatches.slice(0, 4).map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/matches/${item.id}`}
-                  className="group rounded-[24px] border border-white/10 bg-white/5 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10 sm:rounded-[28px] sm:p-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-white truncate">{item.teams?.home?.name ?? "Home"} vs {item.teams?.away?.name ?? "Away"}</p>
-                      <p className="mt-2 text-xs text-slate-400">{item.category}</p>
+              relatedLiveMatches.slice(0, 4).map((item) => {
+                const itemHref = buildMatchPath(item.title, item.id);
+                return (
+                  <Link
+                    key={item.id}
+                    href={itemHref}
+                    className="group rounded-[24px] border border-white/10 bg-white/5 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10 sm:rounded-[28px] sm:p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white truncate">{item.teams?.home?.name ?? "Home"} vs {item.teams?.away?.name ?? "Away"}</p>
+                        <p className="mt-2 text-xs text-slate-400">{item.category}</p>
+                      </div>
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-200">Live</span>
                     </div>
-                    <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-200">Live</span>
-                  </div>
-                  <p className="mt-4 text-sm text-slate-300">Kickoff {formatTime(item.date)}</p>
-                </Link>
-              ))
+                    <p className="mt-4 text-sm text-slate-300">Kickoff {formatTime(item.date)}</p>
+                  </Link>
+                );
+              })
             )}
           </CardContent>
         </Card>
@@ -429,21 +433,24 @@ export function MatchCommandCenter({
               {relatedLiveMatches.length === 0 ? (
                 <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 text-center text-slate-400">No related live matches right now.</div>
               ) : (
-                relatedLiveMatches.slice(0, 5).map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/matches/${item.id}`}
-                    className="group block rounded-[24px] border border-white/10 bg-white/5 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{item.teams?.home?.name ?? "Home"} vs {item.teams?.away?.name ?? "Away"}</p>
-                        <p className="mt-1 text-xs text-slate-400 truncate">{item.category}</p>
+                relatedLiveMatches.slice(0, 5).map((item) => {
+                  const itemHref = buildMatchPath(item.title, item.id);
+                  return (
+                    <Link
+                      key={item.id}
+                      href={itemHref}
+                      className="group block rounded-[24px] border border-white/10 bg-white/5 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">{item.teams?.home?.name ?? "Home"} vs {item.teams?.away?.name ?? "Away"}</p>
+                          <p className="mt-1 text-xs text-slate-400 truncate">{item.category}</p>
+                        </div>
+                        <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-rose-200">Live</span>
                       </div>
-                      <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-rose-200">Live</span>
-                    </div>
-                  </Link>
-                ))
+                    </Link>
+                  );
+                })
               )}
             </CardContent>
           </Card>
@@ -462,23 +469,26 @@ export function MatchCommandCenter({
               {popularMatches.length === 0 ? (
                 <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 text-center text-slate-400">No popular matches in view.</div>
               ) : (
-                popularMatches.slice(0, 5).map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/matches/${item.id}`}
-                    className="group block rounded-[24px] border border-white/10 bg-white/5 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{item.teams?.home?.name ?? "Home"} vs {item.teams?.away?.name ?? "Away"}</p>
-                        <p className="mt-1 text-xs text-slate-400 truncate">{item.category}</p>
+                popularMatches.slice(0, 5).map((item) => {
+                  const itemHref = buildMatchPath(item.title, item.id);
+                  return (
+                    <Link
+                      key={item.id}
+                      href={itemHref}
+                      className="group block rounded-[24px] border border-white/10 bg-white/5 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-400/30 hover:bg-white/10"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">{item.teams?.home?.name ?? "Home"} vs {item.teams?.away?.name ?? "Away"}</p>
+                          <p className="mt-1 text-xs text-slate-400 truncate">{item.category}</p>
+                        </div>
+                        {item.popular ? (
+                          <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-200">Popular</span>
+                        ) : null}
                       </div>
-                      {item.popular ? (
-                        <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-200">Popular</span>
-                      ) : null}
-                    </div>
-                  </Link>
-                ))
+                    </Link>
+                  );
+                })
               )}
             </CardContent>
           </Card>

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowLeft, Clock3, Heart, Search, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui";
+import { buildMatchPath } from "@/lib/utils";
 import { getFavorites, getRecentSearches, getWatchHistory, type StoredMatch, type StoredSearch } from "@/lib/persistence";
 
 function formatDate(date?: number) {
@@ -93,7 +94,7 @@ export default function DashboardPage() {
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-slate-400">No favorites yet. Open a match and tap the heart icon to save it here.</div>
               ) : (
                 favorites.map((item) => (
-                  <Link key={item.id} href={`/matches/${item.id}`} className="flex items-center justify-between rounded-[24px] border border-white/10 bg-white/5 px-4 py-3 transition hover:border-emerald-400/40 hover:bg-white/10">
+                  <Link key={item.id} href={buildMatchPath(item.title, item.id)} className="flex items-center justify-between rounded-[24px] border border-white/10 bg-white/5 px-4 py-3 transition hover:border-emerald-400/40 hover:bg-white/10">
                     <div>
                       <p className="text-sm font-semibold text-white">{item.title}</p>
                       <p className="mt-1 text-xs text-slate-400">{item.category ?? "Football match"}</p>
@@ -118,7 +119,7 @@ export default function DashboardPage() {
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-slate-400">No recent match history yet. Start watching follow-up matches to fill this section.</div>
               ) : (
                 watchHistory.map((item) => (
-                  <Link key={item.id} href={`/matches/${item.id}`} className="flex items-center justify-between rounded-[24px] border border-white/10 bg-white/5 px-4 py-3 transition hover:border-sky-400/40 hover:bg-white/10">
+                  <Link key={item.id} href={buildMatchPath(item.title, item.id)} className="flex items-center justify-between rounded-[24px] border border-white/10 bg-white/5 px-4 py-3 transition hover:border-sky-400/40 hover:bg-white/10">
                     <div>
                       <p className="text-sm font-semibold text-white">{item.title}</p>
                       <p className="mt-1 text-xs text-slate-400">{formatDate(item.viewedAt)}</p>

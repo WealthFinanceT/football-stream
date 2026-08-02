@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, PlayCircle, Sparkles, Trophy } from "lucide-r
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildMatchPath } from "@/lib/utils";
 import { getMatchesBySport, getSports } from "@/services/streamed.service";
 import type { Match, Sport } from "@/types/streamed";
 
@@ -179,7 +180,7 @@ export default function LeaguesPage() {
                     <div className="mt-4 flex items-center justify-between">
                       <span className="text-sm text-slate-500">Live streams ready</span>
                       <Button asChild variant="outline" className="border-white/10 bg-slate-900/70 text-slate-200 hover:bg-slate-800">
-                        <Link href={`/matches/${match.id}`} className="flex items-center gap-2">
+                        <Link href={buildMatchPath(match.title, match.id)} className="flex items-center gap-2">
                           <PlayCircle className="h-4 w-4" />
                           Watch
                         </Link>

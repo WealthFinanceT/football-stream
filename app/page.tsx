@@ -12,6 +12,7 @@ import { FeaturedMatchSpotlight } from "@/components/common/FeaturedMatchSpotlig
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { Button } from "@/components/ui";
 import { getLeagueLogo } from "@/lib/league-logos";
+import { buildMatchPath } from "@/lib/utils";
 import {
   getLiveMatches,
   getLivePopularMatches,
@@ -444,7 +445,7 @@ export default async function HomePage() {
               {finalToday.slice(0, 8).map((match) => (
                 <Link
                   key={match.id}
-                  href={`/matches/${match.id}`}
+                  href={buildMatchPath(match.title, match.id)}
                   className="block"
                 >
                   <MatchCard
@@ -507,7 +508,7 @@ export default async function HomePage() {
               {finalPopular.map((match) => (
                 <Link
                   key={match.id}
-                  href={`/matches/${match.id}`}
+                  href={buildMatchPath(match.title, match.id)}
                   className="block"
                 >
                   <MatchCard

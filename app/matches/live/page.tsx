@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getLiveMatches } from "@/services/streamed.service";
 import { MatchCard } from "@/components/common/MatchCard";
+import { buildMatchPath } from "@/lib/utils";
 import type { Match } from "@/types/streamed";
 
 function formatDate(date: number) {
@@ -56,7 +57,7 @@ export default async function LiveMatchesPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {matches.map((match) => (
-              <Link key={match.id} href={`/matches/${match.id}`} className="block">
+              <Link key={match.id} href={buildMatchPath(match.title, match.id)} className="block">
                 <MatchCard
                   title={match.title}
                   subtitle={match.category}
