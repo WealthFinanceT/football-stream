@@ -219,23 +219,63 @@ export async function getMatchById(id: string): Promise<Match | null> {
   return tolerant ?? null;
 }
 
+function buildStreamCandidates(source: string, id: string) {
+  const seen = new Set<string>();
+  const candidates: Array<{ source: string; id: string }> = [];
+
+  const addCandidate = (candidateSource: string, candidateId: string) => {
+    const key = `${candidateSource}:${candidateId}`;
+    if (!candidateSource || !candidateId || seen.has(key)) return;
+    seen.add(key);
+    candidates.push({ source: candidateSource, id: candidateId });
+  };
+
+  const normalizedId = id.replace(/^ppv-/, "");
+  const prefixedId = id.startsWith("ppv-") ? id : `ppv-${id}`;
+
+  addCandidate(source, id);
+  addCandidate(source, normalizedId);
+  addCandidate(source, prefixedId);
+  addCandidate("admin", id);
+  addCandidate("admin", normalizedId);
+  addCandidate("admin", prefixedId);
+  addCandidate("ppv", id);
+  addCandidate("ppv", normalizedId);
+  addCandidate("ppv", prefixedId);
+
+  return candidates;
+}
+
 export async function getStreamsBySource(
   source: string,
   id: string,
 ): Promise<Stream[]> {
-  const payload = await requestJson<StreamedStreamResponse[]>(
-    `/stream/${source}/${id}`,
-    { cache: "no-store" },
-  );
+  const candidates = buildStreamCandidates(source, id);
 
-  const uniqueMap = new Map<string, StreamedStreamResponse>();
-  if (Array.isArray(payload)) {
-    for (const s of payload) {
-      const key = `${s?.source ?? source}-${s?.id ?? ""}`;
-      if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+  for (const candidate of candidates) {
+    try {
+      const payload = await requestJson<StreamedStreamResponse[]>(
+        `/stream/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`,
+        { cache: "no-store", maxAttempts: 2 },
+      );
+
+      const uniqueMap = new Map<string, StreamedStreamResponse>();
+      if (Array.isArray(payload)) {
+        for (const s of payload) {
+          const key = `${s?.source ?? candidate.source}-${s?.id ?? ""}`;
+          if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+        }
+      }
+
+      const uniquePayload = Array.from(uniqueMap.values());
+      const streams = uniquePayload.map(toStream).filter((stream) => Boolean(stream.embedUrl));
+      if (streams.length > 0) {
+        return streams;
+      }
+    } catch {
+      // Try the next candidate if the upstream endpoint returns no data.
     }
   }
-  const uniquePayload = Array.from(uniqueMap.values());
 
-  return uniquePayload.map(toStream);
+  return [];
 }

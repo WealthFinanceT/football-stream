@@ -98,29 +98,60 @@ export function MatchCommandCenter({
       setStreamError(attempt > 0 ? "Reconnecting to stream..." : null);
 
       try {
-        const response = await fetch(
-          `/api/streams/${encodeURIComponent(firstSource.source)}/${encodeURIComponent(firstSource.id)}`,
-          { cache: "no-store" },
-        );
-        const payload = await response.json();
+        const candidates = [
+          firstSource ? { source: firstSource.source, id: firstSource.id } : null,
+          ...match.sources.map((source) => ({ source: source.source, id: source.id })),
+          firstSource
+            ? [
+                { source: firstSource.source, id: match.id },
+                { source: firstSource.source, id: match.id.replace(/^ppv-/, "") },
+                { source: "admin", id: firstSource.id },
+                { source: "ppv", id: firstSource.id },
+                { source: "admin", id: match.id },
+                { source: "ppv", id: match.id },
+              ]
+            : [],
+        ].flat() as Array<{ source: string; id: string }>;
 
-        if (!mountedRef.current) return;
+        const seenCandidates = new Set<string>();
+        const uniqueCandidates = candidates.filter((candidate) => {
+          const key = `${candidate.source}:${candidate.id}`;
+          if (!candidate.source || !candidate.id || seenCandidates.has(key)) return false;
+          seenCandidates.add(key);
+          return true;
+        });
 
-        if (!response.ok || !Array.isArray(payload) || payload.length === 0) {
-          throw new Error("No streams available");
+        let normalizedStreams: Stream[] = [];
+
+        for (const candidate of uniqueCandidates) {
+          const response = await fetch(
+            `/api/streams/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`,
+            { cache: "no-store" },
+          );
+          const payload = await response.json();
+
+          if (!mountedRef.current) return;
+
+          if (!response.ok || !Array.isArray(payload) || payload.length === 0) {
+            continue;
+          }
+
+          normalizedStreams = payload
+            .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+            .map((item) => ({
+              id: String(item.id ?? ""),
+              streamNo: Number(item.streamNo ?? 0),
+              language: String(item.language ?? "Unknown"),
+              hd: Boolean(item.hd),
+              embedUrl: String(item.embedUrl ?? ""),
+              source: String(item.source ?? candidate.source),
+            }))
+            .filter((item) => Boolean(item.embedUrl));
+
+          if (normalizedStreams.length > 0) {
+            break;
+          }
         }
-
-        const normalizedStreams = payload
-          .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
-          .map((item) => ({
-            id: String(item.id ?? ""),
-            streamNo: Number(item.streamNo ?? 0),
-            language: String(item.language ?? "Unknown"),
-            hd: Boolean(item.hd),
-            embedUrl: String(item.embedUrl ?? ""),
-            source: String(item.source ?? firstSource.source),
-          }))
-          .filter((item) => Boolean(item.embedUrl));
 
         setResolvedStreams(normalizedStreams);
 
@@ -178,7 +209,7 @@ export function MatchCommandCenter({
         setStreamError("Match unavailable");
       }
     },
-    [firstSource, matchKey],
+    [firstSource, match.id, match.sources, matchKey],
   );
 
   useEffect(() => {
