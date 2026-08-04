@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Copy, Heart, PlayCircle, Share2, TrendingUp, Tv } from "lucide-react";
@@ -45,10 +45,27 @@ export function MatchCommandCenter({
     return streams.find((stream) => `${stream.source}-${stream.id}` === savedKey) ?? streams[0] ?? null;
   });
   const [isLoadingStream, setIsLoadingStream] = useState(() => streams.length === 0);
+  const [isRefreshingStream, setIsRefreshingStream] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [favoriteAdded, setFavoriteAdded] = useState(() => getFavorites().some((item) => item.id === match.id));
   const [playerMode, setPlayerMode] = useState<"standard" | "theater" | "mini">("standard");
   const [streamError, setStreamError] = useState<string | null>(null);
+  const selectedStreamRef = useRef<Stream | null>(selectedStream);
+  const retryTimeoutRef = useRef<number | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    selectedStreamRef.current = selectedStream;
+  }, [selectedStream]);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (retryTimeoutRef.current !== null) {
+        window.clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     addToWatchHistory({ id: match.id, title: match.title, category: match.category });
@@ -59,42 +76,38 @@ export function MatchCommandCenter({
     window.localStorage.setItem(matchKey, `${selectedStream.source}-${selectedStream.id}`);
   }, [matchKey, selectedStream]);
 
-  useEffect(() => {
-    let active = true;
-
-    if (!firstSource) {
-      const timeout = window.setTimeout(() => {
-        if (!active) return;
+  const requestStreams = useCallback(
+    async function requestStreamsInternal(attempt = 0) {
+      if (!mountedRef.current) return;
+      if (!firstSource) {
         setResolvedStreams([]);
         setSelectedStream(null);
         setIsLoadingStream(false);
+        setIsRefreshingStream(false);
         setStreamError("No streams available");
-      }, 0);
-      return () => {
-        active = false;
-        window.clearTimeout(timeout);
-      };
-    }
+        return;
+      }
 
-    const loadStreams = async () => {
-      console.log("[MatchCommandCenter] requested source", firstSource.source);
-      console.log("[MatchCommandCenter] requested id", firstSource.id);
+      if (retryTimeoutRef.current !== null) {
+        window.clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+
+      setIsLoadingStream(true);
+      setIsRefreshingStream(attempt > 0);
+      setStreamError(attempt > 0 ? "Reconnecting to stream..." : null);
 
       try {
         const response = await fetch(
           `/api/streams/${encodeURIComponent(firstSource.source)}/${encodeURIComponent(firstSource.id)}`,
+          { cache: "no-store" },
         );
         const payload = await response.json();
-        console.log("[MatchCommandCenter] API response", payload);
 
-        if (!active) return;
+        if (!mountedRef.current) return;
 
-        if (!Array.isArray(payload) || payload.length === 0) {
-          setResolvedStreams([]);
-          setSelectedStream(null);
-          setIsLoadingStream(false);
-          setStreamError("No streams available");
-          return;
+        if (!response.ok || !Array.isArray(payload) || payload.length === 0) {
+          throw new Error("No streams available");
         }
 
         const normalizedStreams = payload
@@ -112,37 +125,72 @@ export function MatchCommandCenter({
         setResolvedStreams(normalizedStreams);
 
         if (normalizedStreams.length === 0) {
+          if (attempt < 3) {
+            const delayMs = 10000 * 2 ** attempt;
+            retryTimeoutRef.current = window.setTimeout(() => {
+              void requestStreamsInternal(attempt + 1);
+            }, delayMs);
+            return;
+          }
+
           setSelectedStream(null);
           setIsLoadingStream(false);
-          setStreamError("No streams available");
+          setIsRefreshingStream(false);
+          setStreamError("Match unavailable");
           return;
         }
 
         const savedKey = window.localStorage.getItem(matchKey);
-        const matchingStream = normalizedStreams.find(
-          (stream) => `${stream.source}-${stream.id}` === savedKey,
-        );
+        const currentSelection = selectedStreamRef.current;
+        const matchingStream =
+          normalizedStreams.find(
+            (stream) =>
+              currentSelection &&
+              stream.source === currentSelection.source &&
+              stream.id === currentSelection.id,
+          ) ??
+          normalizedStreams.find(
+            (stream) => `${stream.source}-${stream.id}` === savedKey,
+          ) ??
+          normalizedStreams[0];
 
-        setSelectedStream(matchingStream ?? normalizedStreams[0]);
+        setSelectedStream(matchingStream);
         setIsLoadingStream(false);
+        setIsRefreshingStream(false);
         setStreamError(null);
       } catch (error) {
-        if (!active) return;
-        const message = error instanceof Error ? error.message : "Unable to load stream";
+        if (!mountedRef.current) return;
         console.error("[MatchCommandCenter] stream fetch failed", error);
+
+        if (attempt < 3) {
+          const delayMs = 10000 * 2 ** attempt;
+          setStreamError("Reconnecting to stream...");
+          retryTimeoutRef.current = window.setTimeout(() => {
+            void requestStreamsInternal(attempt + 1);
+          }, delayMs);
+          return;
+        }
+
         setResolvedStreams([]);
         setSelectedStream(null);
         setIsLoadingStream(false);
-        setStreamError(message);
+        setIsRefreshingStream(false);
+        setStreamError("Match unavailable");
       }
-    };
+    },
+    [firstSource, matchKey],
+  );
 
-    loadStreams();
+  useEffect(() => {
+    void requestStreams(0);
 
     return () => {
-      active = false;
+      if (retryTimeoutRef.current !== null) {
+        window.clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
     };
-  }, [firstSource, match.id, matchKey]);
+  }, [requestStreams]);
 
   const isLive = Boolean(match.popular);
   const homeName = match.teams?.home?.name ?? "Home";
@@ -214,14 +262,25 @@ export function MatchCommandCenter({
             <MatchPlayer
               streams={resolvedStreams}
               selectedStream={selectedStream}
-              loading={isLoadingStream}
+              loading={isLoadingStream || isRefreshingStream}
               onStreamReady={() => {
                 setIsLoadingStream(false);
+                setIsRefreshingStream(false);
                 setStreamError(null);
               }}
-              onStreamError={(message) => setStreamError(message)}
+              onStreamError={(message) => {
+                setStreamError(message);
+                if (!isRefreshingStream) {
+                  void requestStreams(0);
+                }
+              }}
               onSelectStream={(stream) => {
-                setIsLoadingStream(true);
+                if (retryTimeoutRef.current !== null) {
+                  window.clearTimeout(retryTimeoutRef.current);
+                  retryTimeoutRef.current = null;
+                }
+                setIsLoadingStream(false);
+                setIsRefreshingStream(false);
                 setSelectedStream(stream);
                 setStreamError(null);
               }}

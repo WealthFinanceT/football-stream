@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getStreamsBySource } from "@/services/streamed.service";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ source: string; id: string }> },
@@ -22,7 +24,11 @@ export async function GET(
 
     console.log("[streams api] response", normalizedStreams);
 
-    return NextResponse.json(normalizedStreams);
+    return NextResponse.json(normalizedStreams, {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    });
   } catch (error) {
     console.error("Failed to fetch streams", error);
 

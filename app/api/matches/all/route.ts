@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getAllMatches } from "@/services/streamed.service";
 
+export const revalidate = 30;
+
 export async function GET() {
   try {
     const matches = await getAllMatches();

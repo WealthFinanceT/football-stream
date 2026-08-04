@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getSports } from "@/services/streamed.service";
 
+export const revalidate = 30;
+
 export async function GET() {
   try {
     const sports = await getSports();

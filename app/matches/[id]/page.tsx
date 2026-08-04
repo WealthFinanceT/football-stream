@@ -99,16 +99,17 @@ export default async function MatchDetailsPage({
     match = await getMatchDetails(id);
     if (match) {
       const firstSource = match.sources?.[0];
-      const [liveData, popularData, streamData] = await Promise.all([
+      const [liveResult, popularResult, streamResult] = await Promise.allSettled([
         getLiveMatches(),
         getLivePopularMatches(),
         firstSource
           ? getStreams(firstSource.source, firstSource.id)
           : Promise.resolve([]),
       ]);
-      relatedLiveMatches = liveData;
-      popularMatches = popularData;
-      streams = streamData;
+
+      relatedLiveMatches = liveResult.status === "fulfilled" ? liveResult.value : [];
+      popularMatches = popularResult.status === "fulfilled" ? popularResult.value : [];
+      streams = streamResult.status === "fulfilled" ? streamResult.value : [];
     }
   } catch (err) {
     try {

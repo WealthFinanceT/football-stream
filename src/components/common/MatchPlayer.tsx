@@ -141,13 +141,11 @@ export function MatchPlayer({
 
       if (!isManifestError) return;
 
-      const message =
-        "HLS playback failed due to a manifest or network issue. Switching to the provider fallback.";
+      const message = "Reconnecting to stream...";
       console.warn("[MatchPlayer] HLS playback error", data);
-      setRenderMode("fallback");
+      setRenderMode("loading");
       setErrorState(message);
       onStreamError?.(message);
-      onStreamReady?.();
       hls.destroy();
       hlsRef.current = null;
     };
@@ -260,11 +258,10 @@ export function MatchPlayer({
   };
 
   const handleIframeError = () => {
-    const message =
-      "Stream blocked or unavailable. Try another source or open the match in a new window.";
+    const message = "Reconnecting to stream...";
+    setRenderMode("loading");
     setErrorState(message);
     onStreamError?.(message);
-    onStreamReady?.();
   };
 
   const handleOpenExternal = () => {
@@ -273,8 +270,10 @@ export function MatchPlayer({
   };
 
   const handleRetry = () => {
-    setErrorState(null);
+    const message = "Reconnecting to stream...";
+    setErrorState(message);
     setRenderMode("loading");
+    onStreamError?.(message);
   };
 
   if (!stream) {
