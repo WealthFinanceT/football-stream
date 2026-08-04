@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Clock3, TrendingUp, Tv, Zap } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatMatchDateTime } from "@/lib/date";
 import { buildMatchPath } from "@/lib/utils";
 import type { Match } from "@/types/streamed";
 
@@ -13,13 +14,6 @@ function matchBadgeUrl(badge?: string) {
   return badge
     ? `https://streamed.pk/api/images/badge/${badge}.webp`
     : undefined;
-}
-
-function formatDate(date: number) {
-  return new Date(date).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 export function LiveMatchCenter({
@@ -152,7 +146,7 @@ export function LiveMatchCenter({
                           <div className="space-y-2">
                             <div className="inline-flex items-center gap-2 text-sm text-slate-300">
                               <Clock3 className="h-4 w-4 text-emerald-300" />
-                              <span>{formatDate(match.date)}</span>
+                              <span>{formatMatchDateTime(match.date)}</span>
                             </div>
                             <p className="text-sm text-slate-400">
                               {isLive

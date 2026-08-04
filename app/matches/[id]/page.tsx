@@ -12,6 +12,7 @@ import {
   Sidebar,
 } from "@/components";
 import { Button } from "@/components/ui";
+import { formatMatchDateTime } from "@/lib/date";
 import { buildMatchPath } from "@/lib/utils";
 import type { Match, Stream } from "@/types/streamed";
 import {
@@ -30,13 +31,6 @@ async function getMatchDetails(id: string) {
 
 async function getStreams(source: string, id: string) {
   return await getStreamsBySource(source, id);
-}
-
-function formatDate(date: number) {
-  return new Date(date).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 export async function generateMetadata({
@@ -161,7 +155,7 @@ export default async function MatchDetailsPage({
                     <MatchCard
                       title={sportMatch.title}
                       subtitle={sportMatch.category}
-                      time={formatDate(sportMatch.date)}
+                      time={formatMatchDateTime(sportMatch.date)}
                       league={sportMatch.category}
                       homeTeam={sportMatch.teams?.home?.name ?? "Home"}
                       awayTeam={sportMatch.teams?.away?.name ?? "Away"}

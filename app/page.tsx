@@ -11,6 +11,7 @@ import { MatchCard } from "@/components/common/MatchCard";
 import { FeaturedMatchSpotlight } from "@/components/common/FeaturedMatchSpotlight";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { Button } from "@/components/ui";
+import { formatMatchDateTime } from "@/lib/date";
 import { getLeagueLogo } from "@/lib/league-logos";
 import { buildMatchPath } from "@/lib/utils";
 import {
@@ -20,13 +21,6 @@ import {
   getTodayMatches,
 } from "@/services/streamed.service";
 import type { Match, Sport } from "@/types/streamed";
-
-function formatDate(date: number) {
-  return new Date(date).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -272,7 +266,7 @@ export default async function HomePage() {
                 </p>
                 <p className="mt-2 text-sm text-slate-400">
                   {heroMatch
-                    ? `${heroMatch.category} · ${formatDate(heroMatch.date)}`
+                    ? `${heroMatch.category} · ${formatMatchDateTime(heroMatch.date)}`
                     : "Real-time sports action from the official API."}
                 </p>
               </div>
@@ -451,7 +445,7 @@ export default async function HomePage() {
                   <MatchCard
                     title={match.title}
                     subtitle={match.category}
-                    time={formatDate(match.date)}
+                    time={formatMatchDateTime(match.date)}
                     league={match.category}
                     homeTeam={match.teams?.home?.name ?? "Home"}
                     awayTeam={match.teams?.away?.name ?? "Away"}
@@ -514,7 +508,7 @@ export default async function HomePage() {
                   <MatchCard
                     title={match.title}
                     subtitle={match.category}
-                    time={formatDate(match.date)}
+                    time={formatMatchDateTime(match.date)}
                     league={match.category}
                     live={match.popular}
                     homeTeam={match.teams?.home?.name ?? "Home"}

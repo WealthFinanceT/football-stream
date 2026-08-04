@@ -1,11 +1,7 @@
-export function formatDate(value: string | Date): string {
-  const date = new Date(value);
+import { formatMatchDate } from "@/lib/date";
 
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleDateString("en", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+export { formatMatchDate, formatMatchDateTime, formatMatchTime } from "@/lib/date";
+
+export function formatDate(value: string | Date): string {
+  return formatMatchDate(value);
 }

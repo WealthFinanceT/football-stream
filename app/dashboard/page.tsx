@@ -5,16 +5,9 @@ import { useState } from "react";
 import { ArrowLeft, Clock3, Heart, Search, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui";
+import { formatMatchDateTime } from "@/lib/date";
 import { buildMatchPath } from "@/lib/utils";
 import { getFavorites, getRecentSearches, getWatchHistory, type StoredMatch, type StoredSearch } from "@/lib/persistence";
-
-function formatDate(date?: number) {
-  if (!date) return "Recently viewed";
-  return new Date(date).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 export default function DashboardPage() {
   const [favorites] = useState<StoredMatch[]>(() => getFavorites());
@@ -122,7 +115,7 @@ export default function DashboardPage() {
                   <Link key={item.id} href={buildMatchPath(item.title, item.id)} className="flex items-center justify-between rounded-[24px] border border-white/10 bg-white/5 px-4 py-3 transition hover:border-sky-400/40 hover:bg-white/10">
                     <div>
                       <p className="text-sm font-semibold text-white">{item.title}</p>
-                      <p className="mt-1 text-xs text-slate-400">{formatDate(item.viewedAt)}</p>
+                      <p className="mt-1 text-xs text-slate-400">{item.viewedAt ? formatMatchDateTime(item.viewedAt) : "Recently viewed"}</p>
                     </div>
                     <span className="text-xs uppercase tracking-[0.24em] text-slate-400">Resume</span>
                   </Link>

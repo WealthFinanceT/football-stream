@@ -6,23 +6,10 @@ import { motion } from "framer-motion";
 import { ArrowRight, Copy, Heart, PlayCircle, Share2, TrendingUp, Tv } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MatchPlayer } from "@/components/common/MatchPlayer";
+import { formatMatchDateTime, formatMatchTime } from "@/lib/date";
 import { addToWatchHistory, getFavorites, toggleFavorite } from "@/lib/persistence";
 import { buildMatchPath } from "@/lib/utils";
 import type { Match, Stream } from "@/types/streamed";
-
-function formatDate(date: number) {
-  return new Date(date).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-function formatTime(date: number) {
-  return new Date(date).toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function MatchCommandCenter({
   match,
@@ -295,7 +282,7 @@ export function MatchCommandCenter({
                   {isLive ? "Live now" : "Upcoming"}
                 </span>
                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
-                  {formatDate(match.date)}
+                  {formatMatchDateTime(match.date)}
                 </span>
               </div>
             </div>
@@ -363,8 +350,8 @@ export function MatchCommandCenter({
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-4 md:p-5">
                   <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Kickoff</p>
-                  <p className="mt-3 break-words text-lg font-semibold text-white">{formatDate(match.date)}</p>
-                  <p className="mt-2 text-sm text-slate-400">{formatTime(match.date)}</p>
+                  <p className="mt-3 break-words text-lg font-semibold text-white">{formatMatchDateTime(match.date)}</p>
+                  <p className="mt-2 text-sm text-slate-400">{formatMatchTime(match.date)}</p>
                 </div>
                 <div className="space-y-4">
                   <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-5">
@@ -417,7 +404,7 @@ export function MatchCommandCenter({
                       </div>
                       <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-200">Live</span>
                     </div>
-                    <p className="mt-4 text-sm text-slate-300">Kickoff {formatTime(item.date)}</p>
+                    <p className="mt-4 text-sm text-slate-300">Kickoff {formatMatchTime(item.date)}</p>
                   </Link>
                 );
               })
@@ -500,7 +487,7 @@ export function MatchCommandCenter({
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
                   <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Kickoff</p>
-                  <p className="mt-2 break-words text-sm font-semibold text-white">{formatDate(match.date)}</p>
+                  <p className="mt-2 break-words text-sm font-semibold text-white">{formatMatchDateTime(match.date)}</p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
                   <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Match ID</p>

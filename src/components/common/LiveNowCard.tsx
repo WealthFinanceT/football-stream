@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Clock3 } from "lucide-react";
+import { formatMatchTime } from "@/lib/date";
 import { buildMatchPath } from "@/lib/utils";
 import type { Match } from "@/types/streamed";
 
@@ -88,10 +89,7 @@ export function LiveNowCard({ match }: { match: Match }) {
             </p>
             <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-white">
               <Clock3 className="h-4 w-4 text-emerald-300" />
-              {new Date(match.date).toLocaleTimeString(undefined, {
-                hour: "numeric",
-                minute: "2-digit",
-              })}
+              {formatMatchTime(match.date)}
             </div>
           </div>
         </div>

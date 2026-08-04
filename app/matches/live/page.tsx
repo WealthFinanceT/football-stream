@@ -1,15 +1,9 @@
 import Link from "next/link";
 import { getLiveMatches } from "@/services/streamed.service";
 import { MatchCard } from "@/components/common/MatchCard";
+import { formatMatchDateTime } from "@/lib/date";
 import { buildMatchPath } from "@/lib/utils";
 import type { Match } from "@/types/streamed";
-
-function formatDate(date: number) {
-  return new Date(date).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 async function fetchLiveMatches() {
   return await getLiveMatches();
@@ -61,7 +55,7 @@ export default async function LiveMatchesPage() {
                 <MatchCard
                   title={match.title}
                   subtitle={match.category}
-                  time={formatDate(match.date)}
+                  time={formatMatchDateTime(match.date)}
                   league={match.category}
                   live
                   homeTeam={match.teams?.home?.name ?? "Home"}

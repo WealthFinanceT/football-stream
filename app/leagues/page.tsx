@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, PlayCircle, Sparkles, Trophy } from "lucide-r
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatMatchDate } from "@/lib/date";
 import { buildMatchPath } from "@/lib/utils";
 import { getMatchesBySport, getSports } from "@/services/streamed.service";
 import type { Match, Sport } from "@/types/streamed";
@@ -171,10 +172,7 @@ export default function LeaguesPage() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-slate-400">
                         <CalendarDays className="h-4 w-4 text-emerald-400" />
-                        {new Date(match.date).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}
+                        {formatMatchDate(match.date)}
                       </div>
                     </div>
                     <div className="mt-4 flex items-center justify-between">
