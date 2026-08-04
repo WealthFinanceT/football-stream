@@ -52,6 +52,7 @@ export function MatchCommandCenter({
   const [streamError, setStreamError] = useState<string | null>(null);
   const selectedStreamRef = useRef<Stream | null>(selectedStream);
   const retryTimeoutRef = useRef<number | null>(null);
+  const refreshTimerRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -189,6 +190,13 @@ export function MatchCommandCenter({
         setIsLoadingStream(false);
         setIsRefreshingStream(false);
         setStreamError(null);
+
+        if (refreshTimerRef.current === null) {
+          refreshTimerRef.current = window.setInterval(() => {
+            if (!mountedRef.current) return;
+            void requestStreamsInternal(0);
+          }, 30000);
+        }
       } catch (error) {
         if (!mountedRef.current) return;
         console.error("[MatchCommandCenter] stream fetch failed", error);
@@ -219,6 +227,10 @@ export function MatchCommandCenter({
       if (retryTimeoutRef.current !== null) {
         window.clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
+      }
+      if (refreshTimerRef.current !== null) {
+        window.clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
       }
     };
   }, [requestStreams]);

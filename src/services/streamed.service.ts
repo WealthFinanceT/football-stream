@@ -191,32 +191,30 @@ export async function getMatchesBySport(sport: string): Promise<Match[]> {
   return payload.map(toMatch);
 }
 
+function extractMatchId(input: string): string | null {
+  if (!input) return null;
+
+  const digits = input.match(/(\d+)/g);
+  if (!digits?.length) return null;
+
+  return digits[digits.length - 1] ?? null;
+}
+
 export async function getMatchById(id: string): Promise<Match | null> {
-  const matches = await getAllMatches();
+  const numericId = extractMatchId(id);
+  const lookupId = numericId ?? id;
 
-  const exact = matches.find((match) => match.id === id);
-  if (exact) return exact;
-  const slugify = (s?: string) =>
-    (s ?? "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
+  try {
+    const payload = await requestJson<StreamedMatchResponse>(
+      `/matches/${encodeURIComponent(lookupId)}`,
+      { cache: "no-store", maxAttempts: 2 },
+    );
 
-  const tolerant = matches.find((match) => {
-    if (!match.id) return false;
-
-    if (id.includes(match.id)) return true;
-
-    if (id.endsWith(`-${match.id}`)) return true;
-
-    const titleSlug = slugify(match.title);
-    if (titleSlug && (id === titleSlug || id.startsWith(`${titleSlug}-`)))
-      return true;
-
-    return false;
-  });
-
-  return tolerant ?? null;
+    if (!payload || typeof payload !== "object") return null;
+    return toMatch(payload);
+  } catch {
+    return null;
+  }
 }
 
 function buildStreamCandidates(source: string, id: string) {
