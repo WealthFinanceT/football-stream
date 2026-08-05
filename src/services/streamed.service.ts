@@ -94,6 +94,8 @@ async function requestJson<T>(
 ): Promise<T> {
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const baseDelayMs = options.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
+  const requestUrl = buildUrl(path);
+  const cacheOption = options.cache;
 
   let lastError: unknown;
 
@@ -102,25 +104,58 @@ async function requestJson<T>(
     const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
     try {
-      const response = await fetch(buildUrl(path), {
+      const response = await fetch(requestUrl, {
         method: "GET",
         headers: {
           Accept: "application/json",
         },
         signal: controller.signal,
-        ...(options.cache ? { cache: options.cache } : {}),
+        ...(cacheOption ? { cache: cacheOption } : {}),
         ...(typeof options.revalidate === "number"
           ? { next: { revalidate: options.revalidate } }
           : {}),
       });
 
+      const responseText = await response.text();
+      const bodyPreview = responseText.length > 1000 ? `${responseText.slice(0, 1000)}...` : responseText;
+
       if (!response.ok) {
-        throw new Error(
-          `Streamed API request failed with status ${response.status}`,
-        );
+        const message = `Streamed API request failed for ${requestUrl} with status ${response.status}`;
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[Streamed API] request failed", {
+            url: requestUrl,
+            status: response.status,
+            body: bodyPreview,
+            cache: cacheOption,
+            attempt,
+          });
+        }
+        throw new Error(`${message}: ${bodyPreview}`);
       }
 
-      return (await response.json()) as T;
+      if (!responseText) {
+        const message = `Streamed API returned empty response for ${requestUrl}`;
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[Streamed API] empty response", { url: requestUrl, cache: cacheOption, attempt });
+        }
+        throw new Error(message);
+      }
+
+      try {
+        return JSON.parse(responseText) as T;
+      } catch (parseError) {
+        const message = `Failed to parse Streamed API response for ${requestUrl}`;
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[Streamed API] parse error", {
+            url: requestUrl,
+            cache: cacheOption,
+            attempt,
+            body: bodyPreview,
+            parseError,
+          });
+        }
+        throw new Error(`${message}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+      }
     } catch (error) {
       lastError = error;
       if (attempt >= maxAttempts) break;
@@ -251,27 +286,42 @@ export async function getStreamsBySource(
   const candidates = buildStreamCandidates(source, id);
 
   for (const candidate of candidates) {
-    try {
-      const payload = await requestJson<StreamedStreamResponse[]>(
-        `/stream/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`,
-        { cache: "no-store", maxAttempts: 2 },
-      );
+    const endpoints = [
+      `/stream/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`,
+      `/streams/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`,
+    ];
 
-      const uniqueMap = new Map<string, StreamedStreamResponse>();
-      if (Array.isArray(payload)) {
-        for (const s of payload) {
-          const key = `${s?.source ?? candidate.source}-${s?.id ?? ""}`;
-          if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+    for (const endpoint of endpoints) {
+      try {
+        const payload = await requestJson<StreamedStreamResponse[]>(
+          endpoint,
+          { cache: "no-store", maxAttempts: 2 },
+        );
+
+        const uniqueMap = new Map<string, StreamedStreamResponse>();
+        if (Array.isArray(payload)) {
+          for (const s of payload) {
+            const key = `${s?.source ?? candidate.source}-${s?.id ?? ""}`;
+            if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+          }
         }
-      }
 
-      const uniquePayload = Array.from(uniqueMap.values());
-      const streams = uniquePayload.map(toStream).filter((stream) => Boolean(stream.embedUrl));
-      if (streams.length > 0) {
-        return streams;
+        const uniquePayload = Array.from(uniqueMap.values());
+        const streams = uniquePayload.map(toStream).filter((stream) => Boolean(stream.embedUrl));
+        if (streams.length > 0) {
+          return streams;
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[streamed.service] getStreamsBySource endpoint failed", {
+            source: candidate.source,
+            id: candidate.id,
+            endpoint,
+            error,
+          });
+        }
+        continue;
       }
-    } catch {
-      // Try the next candidate if the upstream endpoint returns no data.
     }
   }
 

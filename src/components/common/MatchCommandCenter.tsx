@@ -38,9 +38,26 @@ export function MatchCommandCenter({
   const [playerMode, setPlayerMode] = useState<"standard" | "theater" | "mini">("standard");
   const [streamError, setStreamError] = useState<string | null>(null);
   const selectedStreamRef = useRef<Stream | null>(selectedStream);
-  const retryTimeoutRef = useRef<number | null>(null);
   const refreshTimerRef = useRef<number | null>(null);
+  const retryTimeoutRef = useRef<number | null>(null);
+  const failedStreamKeysRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
+
+  const getStreamKey = (stream: Stream) => `${stream.source}:${stream.id}:${stream.streamNo}`;
+
+  const markStreamFailed = (stream: Stream | null) => {
+    if (!stream) return;
+    failedStreamKeysRef.current.add(getStreamKey(stream));
+  };
+
+  const selectNextStream = (streamsList: Stream[], currentStream: Stream | null) => {
+    return (
+      streamsList.find((stream) => {
+        const key = getStreamKey(stream);
+        return (!currentStream || key !== getStreamKey(currentStream)) && !failedStreamKeysRef.current.has(key);
+      }) ?? streamsList[0] ?? null
+    );
+  };
 
   useEffect(() => {
     selectedStreamRef.current = selectedStream;
@@ -49,8 +66,8 @@ export function MatchCommandCenter({
   useEffect(() => {
     return () => {
       mountedRef.current = false;
-      if (retryTimeoutRef.current !== null) {
-        window.clearTimeout(retryTimeoutRef.current);
+      if (refreshTimerRef.current !== null) {
+        window.clearInterval(refreshTimerRef.current);
       }
     };
   }, []);
@@ -79,6 +96,10 @@ export function MatchCommandCenter({
       if (retryTimeoutRef.current !== null) {
         window.clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
+      }
+
+      if (attempt === 0) {
+        failedStreamKeysRef.current = new Set();
       }
 
       setIsLoadingStream(true);
@@ -112,32 +133,81 @@ export function MatchCommandCenter({
         let normalizedStreams: Stream[] = [];
 
         for (const candidate of uniqueCandidates) {
-          const response = await fetch(
-            `/api/streams/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`,
-            { cache: "no-store" },
-          );
-          const payload = await response.json();
-
           if (!mountedRef.current) return;
 
-          if (!response.ok || !Array.isArray(payload) || payload.length === 0) {
-            continue;
+          const requestUrl = `/api/streams/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`;
+          if (process.env.NODE_ENV === "development") {
+            console.debug("[MatchCommandCenter] fetch candidate stream", { requestUrl, attempt, candidate });
           }
 
-          normalizedStreams = payload
-            .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
-            .map((item) => ({
-              id: String(item.id ?? ""),
-              streamNo: Number(item.streamNo ?? 0),
-              language: String(item.language ?? "Unknown"),
-              hd: Boolean(item.hd),
-              embedUrl: String(item.embedUrl ?? ""),
-              source: String(item.source ?? candidate.source),
-            }))
-            .filter((item) => Boolean(item.embedUrl));
+          try {
+            const response = await fetch(requestUrl, { cache: "no-store" });
+            const responseText = await response.text();
+            const bodyPreview = responseText.length > 1000 ? `${responseText.slice(0, 1000)}...` : responseText;
 
-          if (normalizedStreams.length > 0) {
-            break;
+            if (!response.ok) {
+              if (process.env.NODE_ENV === "development") {
+                console.debug("[MatchCommandCenter] candidate stream response error", {
+                  requestUrl,
+                  status: response.status,
+                  body: bodyPreview,
+                });
+              }
+              continue;
+            }
+
+            let payload: unknown;
+            try {
+              payload = JSON.parse(responseText);
+            } catch (parseError) {
+              if (process.env.NODE_ENV === "development") {
+                console.debug("[MatchCommandCenter] invalid stream JSON", {
+                  requestUrl,
+                  body: bodyPreview,
+                  parseError,
+                });
+              }
+              continue;
+            }
+
+            if (!Array.isArray(payload) || payload.length === 0) {
+              continue;
+            }
+
+            const candidateStreams = payload
+              .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+              .map((item) => {
+                const embedUrl = String(item.embedUrl ?? "").trim();
+                return {
+                  id: String(item.id ?? ""),
+                  streamNo: Number(item.streamNo ?? 0),
+                  language: String(item.language ?? "Unknown"),
+                  hd: Boolean(item.hd),
+                  embedUrl,
+                  source: String(item.source ?? candidate.source),
+                };
+              })
+              .filter((item) => {
+                if (!item.embedUrl) return false;
+                return item.embedUrl.startsWith("http://") || item.embedUrl.startsWith("https://");
+              });
+
+            if (candidateStreams.length === 0) {
+              continue;
+            }
+
+            normalizedStreams = candidateStreams.filter(
+              (stream) => !failedStreamKeysRef.current.has(getStreamKey(stream)),
+            );
+
+            if (normalizedStreams.length > 0) {
+              break;
+            }
+          } catch (error) {
+            if (process.env.NODE_ENV === "development") {
+              console.debug("[MatchCommandCenter] stream candidate fetch failed", { requestUrl, error });
+            }
+            continue;
           }
         }
 
@@ -166,11 +236,15 @@ export function MatchCommandCenter({
             (stream) =>
               currentSelection &&
               stream.source === currentSelection.source &&
-              stream.id === currentSelection.id,
+              stream.id === currentSelection.id &&
+              !failedStreamKeysRef.current.has(getStreamKey(stream)),
           ) ??
           normalizedStreams.find(
-            (stream) => `${stream.source}-${stream.id}` === savedKey,
+            (stream) =>
+              `${stream.source}-${stream.id}` === savedKey &&
+              !failedStreamKeysRef.current.has(getStreamKey(stream)),
           ) ??
+          normalizedStreams.find((stream) => !failedStreamKeysRef.current.has(getStreamKey(stream))) ??
           normalizedStreams[0];
 
         setSelectedStream(matchingStream);
@@ -300,6 +374,12 @@ export function MatchCommandCenter({
               }}
               onStreamError={(message) => {
                 setStreamError(message);
+                markStreamFailed(selectedStreamRef.current);
+                const nextStream = selectNextStream(resolvedStreams, selectedStreamRef.current);
+                if (nextStream && nextStream !== selectedStreamRef.current) {
+                  setSelectedStream(nextStream);
+                  setStreamError("Switching to next available stream...");
+                }
                 if (!isRefreshingStream) {
                   void requestStreams(0);
                 }
