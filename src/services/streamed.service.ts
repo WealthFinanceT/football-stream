@@ -1,329 +1,244 @@
-import type { Match, Sport, Stream } from "@/types/streamed";
+import type { Match as MatchType, Sport as SportType, Stream as StreamType } from "@/types/streamed";
 
 const STREAMED_BASE_URL = "https://streamed.pk/api";
 const DEFAULT_TIMEOUT_MS = 8000;
-const DEFAULT_MAX_ATTEMPTS = 3;
-const DEFAULT_BASE_DELAY_MS = 1000;
 
-interface StreamedSportResponse {
-  id?: string;
-  name?: string;
-}
+type RequestCacheOption = RequestCache | undefined;
 
-interface StreamedMatchResponse {
-  id?: string;
-  title?: string;
-  category?: string;
-  date?: number;
-  poster?: string;
-  popular?: boolean;
-  teams?: {
-    home?: {
-      name?: string;
-      badge?: string;
-    };
-    away?: {
-      name?: string;
-      badge?: string;
-    };
-  };
-  sources?: Array<{ source?: string; id?: string }>;
-}
-
-interface StreamedStreamResponse {
-  id?: string;
-  streamNo?: number;
-  language?: string;
-  hd?: boolean;
-  embedUrl?: string;
-  source?: string;
-}
-
-interface RequestJsonOptions {
-  cache?: RequestCache;
+interface RequestOptions {
+  cache?: RequestCacheOption;
   revalidate?: number;
-  maxAttempts?: number;
-  baseDelayMs?: number;
+  timeoutMs?: number;
 }
 
 function buildUrl(path: string) {
   return `${STREAMED_BASE_URL}${path}`;
 }
 
-function toSport(payload: StreamedSportResponse): Sport {
-  return {
-    id: payload.id ?? "",
-    name: payload.name ?? "Unknown",
-  };
-}
-
-function toMatch(payload: StreamedMatchResponse): Match {
-  return {
-    id: payload.id ?? "",
-    title: payload.title ?? "Untitled match",
-    category: payload.category ?? "Football",
-    date: payload.date ?? Date.now(),
-    poster: payload.poster,
-    popular: payload.popular ?? false,
-    teams: payload.teams,
-    sources: (payload.sources ?? []).map((source) => ({
-      source: source.source ?? "",
-      id: source.id ?? "",
-    })),
-  };
-}
-
-function toStream(payload: StreamedStreamResponse): Stream {
-  return {
-    id: payload.id ?? "",
-    streamNo: payload.streamNo ?? 0,
-    language: payload.language ?? "Unknown",
-    hd: payload.hd ?? false,
-    embedUrl: payload.embedUrl ?? "",
-    source: payload.source ?? "",
-  };
-}
-
-async function sleep(ms: number) {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function requestJson<T>(
-  path: string,
-  options: RequestJsonOptions = {},
-): Promise<T> {
-  const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
-  const baseDelayMs = options.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
-  const requestUrl = buildUrl(path);
-  const cacheOption = options.cache;
-
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-
-    try {
-      const response = await fetch(requestUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-        signal: controller.signal,
-        ...(cacheOption ? { cache: cacheOption } : {}),
-        ...(typeof options.revalidate === "number"
-          ? { next: { revalidate: options.revalidate } }
-          : {}),
-      });
-
-      const responseText = await response.text();
-      const bodyPreview = responseText.length > 1000 ? `${responseText.slice(0, 1000)}...` : responseText;
-
-      if (!response.ok) {
-        const message = `Streamed API request failed for ${requestUrl} with status ${response.status}`;
-        if (process.env.NODE_ENV === "development") {
-          console.debug("[Streamed API] request failed", {
-            url: requestUrl,
-            status: response.status,
-            body: bodyPreview,
-            cache: cacheOption,
-            attempt,
-          });
-        }
-        throw new Error(`${message}: ${bodyPreview}`);
-      }
-
-      if (!responseText) {
-        const message = `Streamed API returned empty response for ${requestUrl}`;
-        if (process.env.NODE_ENV === "development") {
-          console.debug("[Streamed API] empty response", { url: requestUrl, cache: cacheOption, attempt });
-        }
-        throw new Error(message);
-      }
-
-      try {
-        return JSON.parse(responseText) as T;
-      } catch (parseError) {
-        const message = `Failed to parse Streamed API response for ${requestUrl}`;
-        if (process.env.NODE_ENV === "development") {
-          console.debug("[Streamed API] parse error", {
-            url: requestUrl,
-            cache: cacheOption,
-            attempt,
-            body: bodyPreview,
-            parseError,
-          });
-        }
-        throw new Error(`${message}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
-      }
-    } catch (error) {
-      lastError = error;
-      if (attempt >= maxAttempts) break;
-      await sleep(baseDelayMs * 2 ** (attempt - 1));
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  }
-
-  if (lastError instanceof Error) {
-    throw lastError;
-  }
-
-  throw new Error("Streamed API request failed");
-}
-
-export async function getSports(): Promise<Sport[]> {
-  const payload = await requestJson<StreamedSportResponse[]>('/sports', {
-    revalidate: 30,
-  });
-  return payload.map(toSport);
-}
-
-export async function getLiveMatches(): Promise<Match[]> {
-  const payload = await requestJson<StreamedMatchResponse[]>('/matches/live', {
-    revalidate: 30,
-  });
-  return payload.map(toMatch);
-}
-
-export async function getLivePopularMatches(): Promise<Match[]> {
-  const payload = await requestJson<StreamedMatchResponse[]>(
-    '/matches/live/popular',
-    { revalidate: 30 },
-  );
-  return payload.map(toMatch);
-}
-
-export async function getTodayMatches(): Promise<Match[]> {
-  const payload = await requestJson<StreamedMatchResponse[]>('/matches/all-today', {
-    revalidate: 30,
-  });
-  return payload.map(toMatch);
-}
-
-export async function getAllMatches(): Promise<Match[]> {
-  const payload = await requestJson<StreamedMatchResponse[]>('/matches/all', {
-    revalidate: 30,
-  });
-
-  const uniqueByIdMap = new Map<string, StreamedMatchResponse>();
-  if (Array.isArray(payload)) {
-    for (const item of payload) {
-      const key = String(item?.id ?? "");
-      if (!uniqueByIdMap.has(key)) uniqueByIdMap.set(key, item);
-    }
-  }
-  const uniquePayload = Array.from(uniqueByIdMap.values());
-
-  return uniquePayload.map(toMatch);
-}
-
-export async function getMatchesBySport(sport: string): Promise<Match[]> {
-  const payload = await requestJson<StreamedMatchResponse[]>(
-    `/matches/${encodeURIComponent(sport)}`,
-    { revalidate: 30 },
-  );
-  return payload.map(toMatch);
-}
-
-function extractMatchId(input: string): string | null {
-  if (!input) return null;
-
-  const digits = input.match(/(\d+)/g);
-  if (!digits?.length) return null;
-
-  return digits[digits.length - 1] ?? null;
-}
-
-export async function getMatchById(id: string): Promise<Match | null> {
-  const numericId = extractMatchId(id);
-  const lookupId = numericId ?? id;
-
+async function timeoutFetch(input: RequestInfo, init: RequestInit = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const payload = await requestJson<StreamedMatchResponse>(
-      `/matches/${encodeURIComponent(lookupId)}`,
-      { cache: "no-store", maxAttempts: 2 },
-    );
+    const res = await fetch(input, { ...init, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
 
+async function requestJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const url = buildUrl(path);
+  const init: RequestInit = {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    ...(options.cache ? { cache: options.cache } : {}),
+  };
+
+  // Next.js revalidate support
+  if (typeof options.revalidate === "number") {
+    // Use fetch with next option when available in runtime; keep init as-is for browsers
+  }
+
+  const res = await timeoutFetch(url, init, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  if (!res.ok) throw new Error(`Request failed ${res.status} ${res.statusText}`);
+  const text = await res.text();
+  if (!text) throw new Error("Empty response");
+  return JSON.parse(text) as T;
+}
+
+function isPlayableUrl(url?: string) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeSport(payload: unknown): SportType {
+  const p = payload as Record<string, unknown>;
+  return {
+    id: String(p.id ?? ""),
+    name: String(p.name ?? ""),
+  };
+}
+
+function normalizeMatch(payload: unknown): MatchType {
+  const p = payload as Record<string, unknown>;
+  const teams = ((): MatchType["teams"] => {
+    const t = p.teams as unknown;
+    if (!t || typeof t !== "object") return undefined;
+    return t as MatchType["teams"];
+  })();
+
+  const sources = (() => {
+    const src = p.sources as unknown;
+    if (!Array.isArray(src)) return [] as Array<{ source: string; id: string }>;
+    return src.map((s) => {
+      const r = s as Record<string, unknown>;
+      return { source: String(r.source ?? ""), id: String(r.id ?? "") };
+    });
+  })();
+
+  return {
+    id: String(p.id ?? ""),
+    title: String(p.title ?? ""),
+    category: String(p.category ?? ""),
+    date: Number(p.date ?? Date.now()),
+    poster: typeof p.poster === "string" && p.poster.length ? String(p.poster) : undefined,
+    popular: Boolean(p.popular ?? false),
+    teams,
+    sources,
+  };
+}
+
+function normalizeStream(payload: unknown): StreamType {
+  const p = payload as Record<string, unknown>;
+  return {
+    id: String(p.id ?? ""),
+    streamNo: Number(p.streamNo ?? 0),
+    language: String(p.language ?? ""),
+    hd: Boolean(p.hd ?? false),
+    embedUrl: String(p.embedUrl ?? ""),
+    source: String(p.source ?? ""),
+  };
+}
+
+export async function getSports(): Promise<SportType[]> {
+  const payload = await requestJson<unknown[]>("/sports", { revalidate: 30 });
+  if (!Array.isArray(payload)) return [];
+  return payload.map(normalizeSport);
+}
+
+export async function getLiveMatches(): Promise<MatchType[]> {
+  const payload = await requestJson<unknown[]>("/matches/live", { revalidate: 30 });
+  if (!Array.isArray(payload)) return [];
+  return payload.map(normalizeMatch);
+}
+
+export async function getLivePopularMatches(): Promise<MatchType[]> {
+  const payload = await requestJson<unknown[]>("/matches/live/popular", { revalidate: 30 });
+  if (!Array.isArray(payload)) return [];
+  return payload.map(normalizeMatch);
+}
+
+export async function getTodayMatches(): Promise<MatchType[]> {
+  const payload = await requestJson<unknown[]>("/matches/all-today", { revalidate: 30 });
+  if (!Array.isArray(payload)) return [];
+  return payload.map(normalizeMatch);
+}
+
+export async function getAllMatches(): Promise<MatchType[]> {
+  const payload = await requestJson<unknown[]>("/matches/all", { revalidate: 30 });
+  if (!Array.isArray(payload)) return [];
+  // dedupe by id
+  const map = new Map<string, unknown>();
+  for (const item of payload) {
+    const record = item as Record<string, unknown>;
+    const id = String(record.id ?? "");
+    if (!map.has(id)) map.set(id, item);
+  }
+  return Array.from(map.values()).map(normalizeMatch);
+}
+
+export async function getMatchesBySport(sport: string): Promise<MatchType[]> {
+  const payload = await requestJson<unknown[]>(`/matches/${encodeURIComponent(sport)}`, { revalidate: 30 });
+  if (!Array.isArray(payload)) return [];
+  return payload.map(normalizeMatch);
+}
+
+export async function getMatchById(id: string): Promise<MatchType | null> {
+  if (!id) return null;
+  try {
+    const payload = await requestJson<unknown>(`/matches/${encodeURIComponent(id)}`, { cache: "no-store", timeoutMs: 5000 });
     if (!payload || typeof payload !== "object") return null;
-    return toMatch(payload);
+    return normalizeMatch(payload);
   } catch {
     return null;
   }
 }
 
-function buildStreamCandidates(source: string, id: string) {
-  const seen = new Set<string>();
-  const candidates: Array<{ source: string; id: string }> = [];
-
-  const addCandidate = (candidateSource: string, candidateId: string) => {
-    const key = `${candidateSource}:${candidateId}`;
-    if (!candidateSource || !candidateId || seen.has(key)) return;
-    seen.add(key);
-    candidates.push({ source: candidateSource, id: candidateId });
-  };
-
-  const normalizedId = id.replace(/^ppv-/, "");
-  const prefixedId = id.startsWith("ppv-") ? id : `ppv-${id}`;
-
-  addCandidate(source, id);
-  addCandidate(source, normalizedId);
-  addCandidate(source, prefixedId);
-  addCandidate("admin", id);
-  addCandidate("admin", normalizedId);
-  addCandidate("admin", prefixedId);
-  addCandidate("ppv", id);
-  addCandidate("ppv", normalizedId);
-  addCandidate("ppv", prefixedId);
-
-  return candidates;
+async function fetchStreamsEndpoint(endpoint: string): Promise<StreamType[]> {
+  try {
+    const payload = await requestJson<unknown[]>(endpoint, { cache: "no-store", timeoutMs: 7000 });
+    if (!Array.isArray(payload)) return [];
+    const streams = payload.map(normalizeStream).filter((s) => isPlayableUrl(s.embedUrl));
+    return streams;
+  } catch {
+    return [];
+  }
 }
 
-export async function getStreamsBySource(
-  source: string,
-  id: string,
-): Promise<Stream[]> {
-  const candidates = buildStreamCandidates(source, id);
+export async function getStreamsBySource(source: string, id: string): Promise<StreamType[]> {
+  if (!source || !id) return [];
+  const candidates = [
+    `/stream/${encodeURIComponent(source)}/${encodeURIComponent(id)}`,
+    `/streams/${encodeURIComponent(source)}/${encodeURIComponent(id)}`,
+  ];
 
-  for (const candidate of candidates) {
-    const endpoints = [
-      `/stream/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`,
-      `/streams/${encodeURIComponent(candidate.source)}/${encodeURIComponent(candidate.id)}`,
-    ];
+  for (const endpoint of candidates) {
+    const streams = await fetchStreamsEndpoint(endpoint);
+    if (streams.length > 0) return streams;
+  }
 
-    for (const endpoint of endpoints) {
-      try {
-        const payload = await requestJson<StreamedStreamResponse[]>(
-          endpoint,
-          { cache: "no-store", maxAttempts: 2 },
-        );
-
-        const uniqueMap = new Map<string, StreamedStreamResponse>();
-        if (Array.isArray(payload)) {
-          for (const s of payload) {
-            const key = `${s?.source ?? candidate.source}-${s?.id ?? ""}`;
-            if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-          }
-        }
-
-        const uniquePayload = Array.from(uniqueMap.values());
-        const streams = uniquePayload.map(toStream).filter((stream) => Boolean(stream.embedUrl));
-        if (streams.length > 0) {
-          return streams;
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.debug("[streamed.service] getStreamsBySource endpoint failed", {
-            source: candidate.source,
-            id: candidate.id,
-            endpoint,
-            error,
-          });
-        }
-        continue;
-      }
+  // try some common fallbacks (ppv/admin variants)
+  const altSources = ["admin", "ppv"];
+  for (const alt of altSources) {
+    for (const endpoint of [
+      `/stream/${encodeURIComponent(alt)}/${encodeURIComponent(id)}`,
+      `/streams/${encodeURIComponent(alt)}/${encodeURIComponent(id)}`,
+    ]) {
+      const streams = await fetchStreamsEndpoint(endpoint);
+      if (streams.length > 0) return streams;
     }
   }
 
   return [];
 }
+
+/**
+ * Try each source in `match.sources` until one returns playable streams.
+ * For live matches, retries up to `maxRetries` with `retryDelayMs` between attempts.
+ */
+export async function getWorkingStreams(match: MatchType, opts?: { maxRetries?: number; retryDelayMs?: number }): Promise<StreamType[]> {
+  if (!match) return [];
+  const sources = Array.isArray(match.sources) ? match.sources : [];
+  if (sources.length === 0) return [];
+
+  const maxRetries = opts?.maxRetries ?? (match.popular ? 3 : 1);
+  const retryDelayMs = opts?.retryDelayMs ?? 20000;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    for (const s of sources) {
+      try {
+        const streams = await getStreamsBySource(s.source, s.id);
+        if (streams.length > 0) return streams;
+      } catch {
+        // continue to next source
+        continue;
+      }
+    }
+
+    // if no streams and this is a live match, wait then retry
+    if (attempt < maxRetries - 1 && match.popular) {
+      await new Promise((r) => setTimeout(r, retryDelayMs));
+    }
+  }
+
+  return [];
+}
+
+const StreamedService = {
+  getSports,
+  getLiveMatches,
+  getLivePopularMatches,
+  getTodayMatches,
+  getAllMatches,
+  getMatchesBySport,
+  getMatchById,
+  getStreamsBySource,
+  getWorkingStreams,
+};
+
+export default StreamedService;

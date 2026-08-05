@@ -22,7 +22,7 @@ import {
   getLivePopularMatches,
   getMatchById,
   getMatchesBySport,
-  getStreamsBySource,
+  getWorkingStreams,
 } from "@/services/streamed.service";
 
 async function getMatchDetails(id: string) {
@@ -31,9 +31,7 @@ async function getMatchDetails(id: string) {
   return match;
 }
 
-async function getStreams(source: string, id: string) {
-  return await getStreamsBySource(source, id);
-}
+// streams are resolved via getWorkingStreams in server rendering
 
 export async function generateMetadata({
   params,
@@ -94,13 +92,10 @@ export default async function MatchDetailsPage({
   try {
     match = await getMatchDetails(id);
     if (match) {
-      const firstSource = match.sources?.[0];
       const [liveResult, popularResult, streamResult] = await Promise.allSettled([
         getLiveMatches(),
         getLivePopularMatches(),
-        firstSource
-          ? getStreams(firstSource.source, firstSource.id)
-          : Promise.resolve([]),
+        getWorkingStreams(match),
       ]);
 
       relatedLiveMatches = liveResult.status === "fulfilled" ? liveResult.value : [];

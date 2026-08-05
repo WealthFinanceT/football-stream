@@ -24,6 +24,7 @@ export function MatchCommandCenter({
 }) {
   const matchKey = `match-selected-stream-${match.id}`;
   const firstSource = match.sources?.[0];
+  const isLive = Boolean(match.popular);
   const [resolvedStreams, setResolvedStreams] = useState<Stream[]>(streams);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(() => {
     if (typeof window === "undefined") return streams[0] ?? null;
@@ -84,7 +85,7 @@ export function MatchCommandCenter({
   const requestStreams = useCallback(
     async function requestStreamsInternal(attempt = 0) {
       if (!mountedRef.current) return;
-      if (!firstSource) {
+      if (!match.sources || match.sources.length === 0) {
         setResolvedStreams([]);
         setSelectedStream(null);
         setIsLoadingStream(false);
@@ -214,6 +215,17 @@ export function MatchCommandCenter({
         setResolvedStreams(normalizedStreams);
 
         if (normalizedStreams.length === 0) {
+          if (isLive) {
+            retryTimeoutRef.current = window.setTimeout(() => {
+              void requestStreamsInternal(0);
+            }, 20000);
+            setResolvedStreams([]);
+            setIsLoadingStream(false);
+            setIsRefreshingStream(false);
+            setStreamError("No streams available — retrying...");
+            return;
+          }
+
           if (attempt < 3) {
             const delayMs = 10000 * 2 ** attempt;
             retryTimeoutRef.current = window.setTimeout(() => {
@@ -256,7 +268,7 @@ export function MatchCommandCenter({
           refreshTimerRef.current = window.setInterval(() => {
             if (!mountedRef.current) return;
             void requestStreamsInternal(0);
-          }, 30000);
+          }, isLive ? 20000 : 30000);
         }
       } catch (error) {
         if (!mountedRef.current) return;
@@ -278,7 +290,7 @@ export function MatchCommandCenter({
         setStreamError("Match unavailable");
       }
     },
-    [firstSource, match.id, match.sources, matchKey],
+    [firstSource, match.id, match.sources, matchKey, isLive],
   );
 
   useEffect(() => {
@@ -296,7 +308,6 @@ export function MatchCommandCenter({
     };
   }, [requestStreams]);
 
-  const isLive = Boolean(match.popular);
   const homeName = match.teams?.home?.name ?? "Home";
   const awayName = match.teams?.away?.name ?? "Away";
   const streamCount = resolvedStreams.length;
