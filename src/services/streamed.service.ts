@@ -105,6 +105,34 @@ function normalizeStream(payload: unknown): StreamType {
   };
 }
 
+const EMBED_ST_BASE_URL = "https://embed.st/embed";
+
+async function lookupEmbedFallbackStream(source: string, id: string): Promise<StreamType[]> {
+  const candidateUrls = [`${EMBED_ST_BASE_URL}/${source}/${id}/1`, `${EMBED_ST_BASE_URL}/${source}/${id}/2`];
+
+  for (const embedUrl of candidateUrls) {
+    try {
+      const response = await timeoutFetch(embedUrl, { method: "GET" }, 5000);
+      if (response.ok) {
+        return [
+          {
+            id: `${source}-${id}`,
+            streamNo: Number(embedUrl.split("/").pop() ?? 1),
+            language: "Live stream",
+            hd: false,
+            embedUrl,
+            source,
+          },
+        ];
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return [];
+}
+
 export async function getSports(): Promise<SportType[]> {
   const payload = await requestJson<unknown[]>("/sports", { revalidate: 30 });
   if (!Array.isArray(payload)) return [];
@@ -192,6 +220,11 @@ export async function getStreamsBySource(source: string, id: string): Promise<St
       const streams = await fetchStreamsEndpoint(endpoint);
       if (streams.length > 0) return streams;
     }
+  }
+
+  // Fallback for football matches: try direct embed pages when API returns no streams.
+  if (id.includes("football")) {
+    return await lookupEmbedFallbackStream(source, id);
   }
 
   return [];
